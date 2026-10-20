@@ -1,0 +1,182 @@
+{
+  "eslint.config.mjs": {
+    "mtime": 1792485069.3562865,
+    "seen": 1792485850.6982555,
+    "ast_hash": "dfa1f5f6a7037bf39dc510f30b180002",
+    "semantic_hash": "dfa1f5f6a7037bf39dc510f30b180002"
+  },
+  "next.config.ts": {
+    "mtime": 1792485115.2752113,
+    "seen": 1792485850.698262,
+    "ast_hash": "59ace8843cd0f04a4328b2189aead87b",
+    "semantic_hash": "59ace8843cd0f04a4328b2189aead87b"
+  },
+  "package.json": {
+    "mtime": 1792485312.1715043,
+    "seen": 1792485850.698265,
+    "ast_hash": "5cbc9eb4796c8f1fd5de57d78b22862e",
+    "semantic_hash": "5cbc9eb4796c8f1fd5de57d78b22862e"
+  },
+  "src/app/layout.tsx": {
+    "mtime": 1792486711.287666,
+    "seen": 1792486745.5185502,
+    "ast_hash": "07b4f51e79f6b4ad18d980cc86d99e97",
+    "semantic_hash": ""
+  },
+  "src/app/page.tsx": {
+    "mtime": 1792486714.5893612,
+    "seen": 1792486745.5185528,
+    "ast_hash": "5b5cfc4a025b141acc7705562bdaaa4e",
+    "semantic_hash": ""
+  },
+  "tsconfig.json": {
+    "mtime": 1792485115.2787244,
+    "seen": 1792485850.698273,
+    "ast_hash": "ee17fd1c97c735e9f3564e3f5251f125",
+    "semantic_hash": "ee17fd1c97c735e9f3564e3f5251f125"
+  },
+  "AGENTS.md": {
+    "mtime": 1792480471.8809605,
+    "seen": 1792485850.6982758,
+    "ast_hash": "5c0c388e78abd27e3f42322720e31ed8",
+    "semantic_hash": "5c0c388e78abd27e3f42322720e31ed8"
+  },
+  "PRD.md": {
+    "mtime": 1792486071.6551666,
+    "seen": 1792486745.5185804,
+    "ast_hash": "32a5fef2104bf473dbd5508d03010bae",
+    "semantic_hash": "32a5fef2104bf473dbd5508d03010bae"
+  },
+  "README.md": {
+    "mtime": 1792486705.79397,
+    "seen": 1792486745.5185828,
+    "ast_hash": "f15aaa42d5d299d091b1171097ea56ad",
+    "semantic_hash": "f15aaa42d5d299d091b1171097ea56ad"
+  },
+  "docs/AGY_PROMPTS.md": {
+    "mtime": 1792484932.9348717,
+    "seen": 1792485850.698283,
+    "ast_hash": "b977040da9a0a7028b5d56cc855c2dde",
+    "semantic_hash": "b977040da9a0a7028b5d56cc855c2dde"
+  },
+  "docs/ANTIGRAVITY_SETUP.md": {
+    "mtime": 1792482147.324759,
+    "seen": 1792485850.6982856,
+    "ast_hash": "ee8f6d1f9c1f803ed795858666118c71",
+    "semantic_hash": "ee8f6d1f9c1f803ed795858666118c71"
+  },
+  "docs/DESIGN_SYSTEM.md": {
+    "mtime": 1792480368.8140728,
+    "seen": 1792485850.6982884,
+    "ast_hash": "5a5b7cf9f12ddef48929a1c213dc9fb7",
+    "semantic_hash": "5a5b7cf9f12ddef48929a1c213dc9fb7"
+  },
+  "docs/ERD_AND_MOCK_SCHEMA.md": {
+    "mtime": 1792480401.0381196,
+    "seen": 1792485850.6982906,
+    "ast_hash": "48ea1eb60e51bbdaac987e99ac4c3ad2",
+    "semantic_hash": "48ea1eb60e51bbdaac987e99ac4c3ad2"
+  },
+  "public/file.svg": {
+    "mtime": 1792485069.397861,
+    "seen": 1792485850.698293,
+    "ast_hash": "d09f95206c3fa0bb9bd9fefabfd0ea71",
+    "semantic_hash": "d09f95206c3fa0bb9bd9fefabfd0ea71"
+  },
+  "public/globe.svg": {
+    "mtime": 1792485069.4111412,
+    "seen": 1792485850.6982954,
+    "ast_hash": "2aaafa6a49b6563925fe440891e32717",
+    "semantic_hash": "2aaafa6a49b6563925fe440891e32717"
+  },
+  "public/next.svg": {
+    "mtime": 1792485069.4283576,
+    "seen": 1792485850.6982973,
+    "ast_hash": "8e061864f388b47f33a1c3780831193e",
+    "semantic_hash": "8e061864f388b47f33a1c3780831193e"
+  },
+  "public/vercel.svg": {
+    "mtime": 1792485069.4421234,
+    "seen": 1792485850.6982992,
+    "ast_hash": "c0af2f507b369b085b35ef4bbe3bcf1e",
+    "semantic_hash": "c0af2f507b369b085b35ef4bbe3bcf1e"
+  },
+  "public/window.svg": {
+    "mtime": 1792485069.4559085,
+    "seen": 1792485850.698301,
+    "ast_hash": "a2760511c65806022ad20adf74370ff3",
+    "semantic_hash": "a2760511c65806022ad20adf74370ff3"
+  },
+  "src/app/admin/page.tsx": {
+    "mtime": 1792486726.5634823,
+    "seen": 1792486745.5185418,
+    "ast_hash": "88fcc9918c08b251f02fdcda46f51f61",
+    "semantic_hash": ""
+  },
+  "src/app/consultation/page.tsx": {
+    "mtime": 1792486718.6015897,
+    "seen": 1792486745.5185452,
+    "ast_hash": "7f774c42d1e48942bb35f2915854f561",
+    "semantic_hash": ""
+  },
+  "src/app/lawyer-dashboard/page.tsx": {
+    "mtime": 1792486722.0425327,
+    "seen": 1792486745.5185475,
+    "ast_hash": "3e8d111f87ca4dba052d766710483e1a",
+    "semantic_hash": ""
+  },
+  "src/components/AdminDashboardView.tsx": {
+    "mtime": 1792486681.5876982,
+    "seen": 1792486745.518555,
+    "ast_hash": "c706425d2becf031c22d6ea67294165e",
+    "semantic_hash": ""
+  },
+  "src/components/ClientView.tsx": {
+    "mtime": 1792486570.31189,
+    "seen": 1792486745.518558,
+    "ast_hash": "0ad0da2afae373a26a373330e57adc22",
+    "semantic_hash": ""
+  },
+  "src/components/ConsultationWorkspace.tsx": {
+    "mtime": 1792486476.3284738,
+    "seen": 1792486745.51856,
+    "ast_hash": "7b3a3395897a991a11c4023bc9a69703",
+    "semantic_hash": ""
+  },
+  "src/components/LawyerDashboardView.tsx": {
+    "mtime": 1792486676.967122,
+    "seen": 1792486745.518562,
+    "ast_hash": "fb97330287d94fb7ccead9137d209431",
+    "semantic_hash": ""
+  },
+  "src/components/MidtransSnapModal.tsx": {
+    "mtime": 1792486393.783576,
+    "seen": 1792486745.518564,
+    "ast_hash": "1e9594cade3575402ba868b74f57dcd4",
+    "semantic_hash": ""
+  },
+  "src/components/Navbar.tsx": {
+    "mtime": 1792486332.9352047,
+    "seen": 1792486745.5185661,
+    "ast_hash": "d9edcc17409e0fba2687bc754ed1bb2a",
+    "semantic_hash": ""
+  },
+  "src/context/HiLawContext.tsx": {
+    "mtime": 1792486249.1336987,
+    "seen": 1792486745.5185683,
+    "ast_hash": "74efca2365bb02e7d7cf074e9a97d2ba",
+    "semantic_hash": ""
+  },
+  "src/data/mockData.ts": {
+    "mtime": 1792486159.2719953,
+    "seen": 1792486745.5185702,
+    "ast_hash": "053c1823d4e5cc9f1c2898cfae3e6540",
+    "semantic_hash": ""
+  },
+  "src/types/hilaw.ts": {
+    "mtime": 1792486063.284355,
+    "seen": 1792486745.5185723,
+    "ast_hash": "5a50aa745652dc58870aeb71f5102372",
+    "semantic_hash": ""
+  }
+}
