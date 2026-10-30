@@ -15,49 +15,49 @@ export const SPECIALIZATIONS: {
   description: string;
   badgeColor: string;
 }[] = [
-  {
-    name: 'Hukum Bisnis & Kontrak',
-    shortLabel: 'Bisnis & Kontrak',
-    description: 'Drafting kontrak, sengketa PT/CV, perjanjian kerja sama & investasi',
-    badgeColor: 'bg-[#EDF2FF] text-[#3B5BDB]',
-  },
-  {
-    name: 'Hukum Keluarga & Waris',
-    shortLabel: 'Keluarga & Waris',
-    description: 'Perceraian, hak asuh anak, pembagian harta gono-gini & warisan',
-    badgeColor: 'bg-[#FFF0F6] text-[#E64980]',
-  },
-  {
-    name: 'Hukum Perdata & Hutang Piutang',
-    shortLabel: 'Perdata & Piutang',
-    description: 'Wanprestasi, somasi penagihan hutang, ganti rugi & perbuatan melawan hukum',
-    badgeColor: 'bg-[#FFF9DB] text-[#D97706]',
-  },
-  {
-    name: 'Hukum Ketenagakerjaan (PHI)',
-    shortLabel: 'Ketenagakerjaan',
-    description: 'Pesangon PHK sepihak, kontrak PKWT/PKWTT, sengketa hubungan industrial',
-    badgeColor: 'bg-[#E6FCF5] text-[#0CA678]',
-  },
-  {
-    name: 'Pertanahan & Properti',
-    shortLabel: 'Tanah & Properti',
-    description: 'Sengketa SHM/SHGB, jual beli tanah/AJB, sengketa developer properti',
-    badgeColor: 'bg-[#F3F0FF] text-[#7048E8]',
-  },
-  {
-    name: 'Hukum Pidana',
-    shortLabel: 'Hukum Pidana',
-    description: 'Pendampingan BAP kepolisian, penipuan/penggelapan, UU ITE & pencemaran nama baik',
-    badgeColor: 'bg-[#FFF5F5] text-[#E03131]',
-  },
-  {
-    name: 'HKI & Pajak',
-    shortLabel: 'HKI & Pajak',
-    description: 'Pendaftaran merek dagang, hak cipta, royalti & sengketa perpajakan',
-    badgeColor: 'bg-[#E3FAFC] text-[#0C8599]',
-  },
-];
+    {
+      name: 'Hukum Bisnis & Kontrak',
+      shortLabel: 'Bisnis & Kontrak',
+      description: 'Drafting kontrak, sengketa PT/CV, perjanjian kerja sama & investasi',
+      badgeColor: 'bg-[#EDF2FF] text-[#3B5BDB]',
+    },
+    {
+      name: 'Hukum Keluarga & Waris',
+      shortLabel: 'Keluarga & Waris',
+      description: 'Perceraian, hak asuh anak, pembagian harta gono-gini & warisan',
+      badgeColor: 'bg-[#FFF0F6] text-[#E64980]',
+    },
+    {
+      name: 'Hukum Perdata & Hutang Piutang',
+      shortLabel: 'Perdata & Piutang',
+      description: 'Wanprestasi, somasi penagihan hutang, ganti rugi & perbuatan melawan hukum',
+      badgeColor: 'bg-[#FFF9DB] text-[#D97706]',
+    },
+    {
+      name: 'Hukum Ketenagakerjaan (PHI)',
+      shortLabel: 'Ketenagakerjaan',
+      description: 'Pesangon PHK sepihak, kontrak PKWT/PKWTT, sengketa hubungan industrial',
+      badgeColor: 'bg-[#E6FCF5] text-[#0CA678]',
+    },
+    {
+      name: 'Pertanahan & Properti',
+      shortLabel: 'Tanah & Properti',
+      description: 'Sengketa SHM/SHGB, jual beli tanah/AJB, sengketa developer properti',
+      badgeColor: 'bg-[#F3F0FF] text-[#7048E8]',
+    },
+    {
+      name: 'Hukum Pidana',
+      shortLabel: 'Hukum Pidana',
+      description: 'Pendampingan BAP kepolisian, penipuan/penggelapan, UU ITE & pencemaran nama baik',
+      badgeColor: 'bg-[#FFF5F5] text-[#E03131]',
+    },
+    {
+      name: 'HKI & Pajak',
+      shortLabel: 'HKI & Pajak',
+      description: 'Pendaftaran merek dagang, hak cipta, royalti & sengketa perpajakan',
+      badgeColor: 'bg-[#E3FAFC] text-[#0C8599]',
+    },
+  ];
 
 export const MOCK_USERS: User[] = [
   {
@@ -180,7 +180,11 @@ export const MOCK_LAWYERS: LawyerProfile[] = [
     fullName: 'Adv. Bima Pratama, S.H., M.H.',
     avatarUrl: 'BP',
     specialization: 'Hukum Pidana',
-    subSpecialties: ['Pendampingan Laporan Polisi', 'Kasus Penipuan & Penggelapan', 'UU ITE & Siber'],
+    subSpecialties: [
+      'Pendampingan Laporan Polisi',
+      'Kasus Penipuan & Penggelapan',
+      'UU ITE & Siber'
+    ],
     licenseNumber: 'PERADI-2016-07741',
     organization: 'PERADI',
     basNumber: 'BAS-PT.DKI/519/2016',

@@ -1,8 +1,5 @@
-'use client';
+﻿import { redirect } from "next/navigation";
 
-import React from 'react';
-import LawyerDashboardView from '@/components/LawyerDashboardView';
-
-export default function LawyerDashboardPage() {
-  return <LawyerDashboardView />;
+export default function Page() {
+  redirect("/lawyer/dashboard");
 }

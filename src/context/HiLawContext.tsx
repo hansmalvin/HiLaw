@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from "react";
 import {
   UserRole,
   LawyerProfile,
@@ -11,14 +11,14 @@ import {
   ConsultationChannel,
   PaymentMethod,
   LegalSummary,
-} from '@/types/hilaw';
+} from "@/types/hilaw";
 import {
   MOCK_LAWYERS,
   MOCK_TOKEN_PACKAGES,
   MOCK_TRANSACTIONS,
   MOCK_SESSIONS,
   MOCK_MESSAGES,
-} from '@/data/mockData';
+} from "@/data/mockData";
 
 interface HiLawContextType {
   role: UserRole;
@@ -43,56 +43,71 @@ interface HiLawContextType {
   processMidtransTopUp: (
     pkg: TokenPackage,
     method: PaymentMethod,
-    status: 'SETTLEMENT' | 'PENDING'
+    status: "SETTLEMENT" | "PENDING",
   ) => void;
   settlePendingTransaction: (txId: string) => void;
   startConsultation: (
     lawyer: LawyerProfile,
     channel: ConsultationChannel,
     brief: string,
-    isAnonymous: boolean
-  ) => { ok: boolean; reason?: string; sessionId?: string };
+    isAnonymous: boolean,
+  ) => {
+    ok: boolean;
+    reason?: string;
+    sessionId?: string;
+  };
   sendMessage: (
     consultationId: string,
     content: string,
-    senderRole: 'CLIENT' | 'LAWYER',
-    attachmentUrl?: string
+    senderRole: "CLIENT" | "LAWYER",
+    attachmentUrl?: string,
   ) => void;
-  switchSessionChannel: (consultationId: string, channel: ConsultationChannel) => void;
+  switchSessionChannel: (
+    consultationId: string,
+    channel: ConsultationChannel,
+  ) => void;
   extendSessionDuration: (consultationId: string) => boolean;
   toggleLawyerAvailability: (
     lawyerId: string,
-    status: 'ONLINE' | 'BUSY' | 'OFFLINE'
+    status: "ONLINE" | "BUSY" | "OFFLINE",
   ) => void;
-  updateLawyerRates: (lawyerId: string, chatRate: number, callRate: number) => void;
+  updateLawyerRates: (
+    lawyerId: string,
+    chatRate: number,
+    callRate: number,
+  ) => void;
   submitLegalResume: (consultationId: string, summary: LegalSummary) => void;
   withdrawLawyerTokens: (tokenAmount: number, bankInfo: string) => boolean;
   verifyLawyerApplication: (
     lawyerId: string,
-    decision: 'VERIFIED' | 'REJECTED'
+    decision: "VERIFIED" | "REJECTED",
   ) => void;
-  addTokenPackage: (pkg: Omit<TokenPackage, 'id'>) => void;
+  addTokenPackage: (pkg: Omit<TokenPackage, "id">) => void;
   resetDemoState: () => void;
 }
 
-const STORAGE_KEY = 'hilaw_prototype_state_v1';
+const STORAGE_KEY = "hilaw_prototype_state_v1";
 
 const HiLawContext = createContext<HiLawContextType | undefined>(undefined);
 
 export function HiLawProvider({ children }: { children: React.ReactNode }) {
-  const [role, setRole] = useState<UserRole>('CLIENT');
+  const [role, setRole] = useState<UserRole>("CLIENT");
   const [tokenBalance, setTokenBalance] = useState<number>(120);
   const [lawyerBalance, setLawyerBalance] = useState<number>(840);
   const [lawyers, setLawyers] = useState<LawyerProfile[]>(MOCK_LAWYERS);
   const [packages, setPackages] = useState<TokenPackage[]>(MOCK_TOKEN_PACKAGES);
-  const [transactions, setTransactions] = useState<TokenTransaction[]>(MOCK_TRANSACTIONS);
-  const [sessions, setSessions] = useState<ConsultationSession[]>(MOCK_SESSIONS);
-  const [messages, setMessages] = useState<ConsultationMessage[]>(MOCK_MESSAGES);
-  const [activeSessionId, setActiveSessionId] = useState<string>('ses-active-01');
+  const [transactions, setTransactions] =
+    useState<TokenTransaction[]>(MOCK_TRANSACTIONS);
+  const [sessions, setSessions] =
+    useState<ConsultationSession[]>(MOCK_SESSIONS);
+  const [messages, setMessages] =
+    useState<ConsultationMessage[]>(MOCK_MESSAGES);
+  const [activeSessionId, setActiveSessionId] =
+    useState<string>("ses-active-01");
   const [isConsultationOpen, setIsConsultationOpen] = useState<boolean>(false);
   const [isTopUpOpen, setIsTopUpOpen] = useState<boolean>(false);
   const [selectedPackage, setSelectedPackage] = useState<TokenPackage | null>(
-    MOCK_TOKEN_PACKAGES[1]
+    MOCK_TOKEN_PACKAGES[1],
   );
   const [hydrated, setHydrated] = useState<boolean>(false);
 
@@ -103,11 +118,14 @@ export function HiLawProvider({ children }: { children: React.ReactNode }) {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.role) setRole(parsed.role);
-        if (typeof parsed.tokenBalance === 'number') setTokenBalance(parsed.tokenBalance);
-        if (typeof parsed.lawyerBalance === 'number') setLawyerBalance(parsed.lawyerBalance);
+        if (typeof parsed.tokenBalance === "number")
+          setTokenBalance(parsed.tokenBalance);
+        if (typeof parsed.lawyerBalance === "number")
+          setLawyerBalance(parsed.lawyerBalance);
         if (Array.isArray(parsed.lawyers)) setLawyers(parsed.lawyers);
         if (Array.isArray(parsed.packages)) setPackages(parsed.packages);
-        if (Array.isArray(parsed.transactions)) setTransactions(parsed.transactions);
+        if (Array.isArray(parsed.transactions))
+          setTransactions(parsed.transactions);
         if (Array.isArray(parsed.sessions)) setSessions(parsed.sessions);
         if (Array.isArray(parsed.messages)) setMessages(parsed.messages);
         if (parsed.activeSessionId) setActiveSessionId(parsed.activeSessionId);
@@ -134,7 +152,7 @@ export function HiLawProvider({ children }: { children: React.ReactNode }) {
           sessions,
           messages,
           activeSessionId,
-        })
+        }),
       );
     } catch {
       // ignore quota error
@@ -154,7 +172,8 @@ export function HiLawProvider({ children }: { children: React.ReactNode }) {
 
   const openTopUpModal = (pkg?: TokenPackage) => {
     if (pkg) setSelectedPackage(pkg);
-    else if (!selectedPackage && packages.length > 0) setSelectedPackage(packages[1] || packages[0]);
+    else if (!selectedPackage && packages.length > 0)
+      setSelectedPackage(packages[1] || packages[0]);
     setIsTopUpOpen(true);
   };
 
@@ -163,21 +182,21 @@ export function HiLawProvider({ children }: { children: React.ReactNode }) {
   const processMidtransTopUp = (
     pkg: TokenPackage,
     method: PaymentMethod,
-    status: 'SETTLEMENT' | 'PENDING'
+    status: "SETTLEMENT" | "PENDING",
   ) => {
     const totalCredited = pkg.tokenAmount + pkg.bonusTokens;
     const now = new Date();
     const orderId = `HILAW-ORDER-20261020-${Math.floor(100 + Math.random() * 900)}`;
-    const timeStr = `2026-10-20 ${String(now.getHours()).padStart(2, '0')}:${String(
-      now.getMinutes()
-    ).padStart(2, '0')} WIB`;
+    const timeStr = `2026-10-20 ${String(now.getHours()).padStart(2, "0")}:${String(
+      now.getMinutes(),
+    ).padStart(2, "0")} WIB`;
 
     const newTx: TokenTransaction = {
       id: `tx-${Date.now()}`,
-      userId: 'usr-client-01',
-      userName: 'Budi Santoso',
+      userId: "usr-client-01",
+      userName: "Budi Santoso",
       packageId: pkg.id,
-      txType: 'TOPUP_MIDTRANS',
+      txType: "TOPUP_MIDTRANS",
       tokenDelta: totalCredited,
       amountIdr: pkg.priceIdr,
       midtransOrderId: orderId,
@@ -187,7 +206,7 @@ export function HiLawProvider({ children }: { children: React.ReactNode }) {
     };
 
     setTransactions((prev) => [newTx, ...prev]);
-    if (status === 'SETTLEMENT') {
+    if (status === "SETTLEMENT") {
       setTokenBalance((prev) => prev + totalCredited);
     }
   };
@@ -195,14 +214,19 @@ export function HiLawProvider({ children }: { children: React.ReactNode }) {
   const settlePendingTransaction = (txId: string) => {
     setTransactions((prev) =>
       prev.map((tx) => {
-        if (tx.id === txId && tx.paymentStatus === 'PENDING') {
-          if (tx.userId === 'usr-client-01') {
+        if (tx.id === txId && tx.paymentStatus === "PENDING") {
+          if (tx.userId === "usr-client-01") {
             setTokenBalance((bal) => bal + tx.tokenDelta);
           }
-          return { ...tx, paymentStatus: 'SETTLEMENT' };
+
+          return {
+            ...tx,
+            paymentStatus: "SETTLEMENT",
+          };
         }
+
         return tx;
-      })
+      }),
     );
   };
 
@@ -210,9 +234,10 @@ export function HiLawProvider({ children }: { children: React.ReactNode }) {
     lawyer: LawyerProfile,
     channel: ConsultationChannel,
     brief: string,
-    isAnonymous: boolean
+    isAnonymous: boolean,
   ) => {
-    const cost = channel === 'CHAT' ? lawyer.tokenRateChat : lawyer.tokenRateCall;
+    const cost =
+      channel === "CHAT" ? lawyer.tokenRateChat : lawyer.tokenRateCall;
     if (tokenBalance < cost) {
       return {
         ok: false,
@@ -222,14 +247,14 @@ export function HiLawProvider({ children }: { children: React.ReactNode }) {
 
     const sessionId = `ses-${Date.now()}`;
     const now = new Date();
-    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(
-      now.getMinutes()
-    ).padStart(2, '0')}`;
+    const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(
+      now.getMinutes(),
+    ).padStart(2, "0")}`;
 
     const newSession: ConsultationSession = {
       id: sessionId,
-      clientId: 'usr-client-01',
-      clientName: isAnonymous ? 'Klien Anonim (#BS-Privasi)' : 'Budi Santoso',
+      clientId: "usr-client-01",
+      clientName: isAnonymous ? "Klien Anonim (#BS-Privasi)" : "Budi Santoso",
       isAnonymous,
       lawyerId: lawyer.id,
       lawyerName: lawyer.fullName,
@@ -240,15 +265,15 @@ export function HiLawProvider({ children }: { children: React.ReactNode }) {
       briefDescription: brief,
       tokensLocked: cost,
       durationMinutes: 30,
-      status: 'ACTIVE',
+      status: "ACTIVE",
       legalSummary: {
         issueAnalysis: `Klien berkonsultasi terkait ${lawyer.specialization}: "${brief}". Berdasarkan telaah awal dokumen & kronologi, klien memiliki kedudukan hukum untuk menempuh langkah upaya hukum preventif maupun represif.`,
         legalBasis:
-          'Kitab Undang-Undang Hukum Perdata (KUHPerdata) / UU No. 18 Tahun 2003 tentang Advokat / Regulasi Spesialis Terkait.',
+          "Kitab Undang-Undang Hukum Perdata (KUHPerdata) / UU No. 18 Tahun 2003 tentang Advokat / Regulasi Spesialis Terkait.",
         recommendedAction: [
-          'Kumpulkan seluruh bukti tertulis (dokumen perjanjian, bukti transfer, dan rekaman korespondensi).',
-          'Susun teguran tertulis (Somasi) atau jadwal mediasi resmi bersama pihak terkait.',
-          'Gunakan draf rekomendasi dari sesi ini sebagai acuan langkah hukum berikutnya.',
+          "Kumpulkan seluruh bukti tertulis (dokumen perjanjian, bukti transfer, dan rekaman korespondensi).",
+          "Susun teguran tertulis (Somasi) atau jadwal mediasi resmi bersama pihak terkait.",
+          "Gunakan draf rekomendasi dari sesi ini sebagai acuan langkah hukum berikutnya.",
         ],
       },
       startedAt: `Hari ini, ${timeStr} WIB`,
@@ -257,13 +282,13 @@ export function HiLawProvider({ children }: { children: React.ReactNode }) {
     const sysMsg: ConsultationMessage = {
       id: `msg-sys-${Date.now()}`,
       consultationId: sessionId,
-      senderId: 'SYSTEM',
-      senderName: 'Sistem Keamanan HiLaw',
-      senderRole: 'SYSTEM',
-      content: `Sesi ${channel.replace('_', ' ')} dimulai (${cost} LawToken). ${
+      senderId: "SYSTEM",
+      senderName: "Sistem Keamanan HiLaw",
+      senderRole: "SYSTEM",
+      content: `Sesi ${channel.replace("_", " ")} dimulai (${cost} LawToken). ${
         isAnonymous
-          ? 'Mode Anonim Aktif: Identitas asli Anda disembunyikan.'
-          : 'Dilindungi Kode Etik Kerahasiaan Advokat.'
+          ? "Mode Anonim Aktif: Identitas asli Anda disembunyikan."
+          : "Dilindungi Kode Etik Kerahasiaan Advokat."
       }`,
       sentAt: timeStr,
     };
@@ -271,9 +296,9 @@ export function HiLawProvider({ children }: { children: React.ReactNode }) {
     const clientInitMsg: ConsultationMessage = {
       id: `msg-cli-${Date.now() + 1}`,
       consultationId: sessionId,
-      senderId: 'usr-client-01',
+      senderId: "usr-client-01",
       senderName: newSession.clientName,
-      senderRole: 'CLIENT',
+      senderRole: "CLIENT",
       content: brief,
       sentAt: timeStr,
     };
@@ -283,20 +308,20 @@ export function HiLawProvider({ children }: { children: React.ReactNode }) {
       consultationId: sessionId,
       senderId: lawyer.id,
       senderName: lawyer.fullName,
-      senderRole: 'LAWYER',
+      senderRole: "LAWYER",
       content: `Halo ${newSession.clientName}, saya ${lawyer.fullName} (Lisensi ${lawyer.licenseNumber}). Saya telah membaca Pre-Chat Brief Anda. Mari kita bahas langkah hukum terbaik untuk masalah ini.`,
       sentAt: timeStr,
     };
 
     const debitTx: TokenTransaction = {
       id: `tx-debit-${Date.now()}`,
-      userId: 'usr-client-01',
-      userName: 'Budi Santoso',
-      txType: 'CONSULTATION_DEBIT',
+      userId: "usr-client-01",
+      userName: "Budi Santoso",
+      txType: "CONSULTATION_DEBIT",
       tokenDelta: -cost,
       amountIdr: cost * 1000,
       midtransOrderId: `HILAW-SES-${Math.floor(1000 + Math.random() * 9000)}`,
-      paymentStatus: 'SETTLEMENT',
+      paymentStatus: "SETTLEMENT",
       createdAt: `2026-10-20 ${timeStr} WIB`,
     };
 
@@ -308,28 +333,32 @@ export function HiLawProvider({ children }: { children: React.ReactNode }) {
     setActiveSessionId(sessionId);
     setIsConsultationOpen(true);
 
-    return { ok: true, sessionId };
+    return {
+      ok: true,
+      sessionId,
+    };
   };
 
   const sendMessage = (
     consultationId: string,
     content: string,
-    senderRole: 'CLIENT' | 'LAWYER',
-    attachmentUrl?: string
+    senderRole: "CLIENT" | "LAWYER",
+    attachmentUrl?: string,
   ) => {
     const session = sessions.find((s) => s.id === consultationId);
     if (!session || !content.trim()) return;
 
     const now = new Date();
-    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(
-      now.getMinutes()
-    ).padStart(2, '0')}`;
+    const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(
+      now.getMinutes(),
+    ).padStart(2, "0")}`;
 
     const newMsg: ConsultationMessage = {
       id: `msg-${Date.now()}`,
       consultationId,
-      senderId: senderRole === 'CLIENT' ? session.clientId : session.lawyerId,
-      senderName: senderRole === 'CLIENT' ? session.clientName : session.lawyerName,
+      senderId: senderRole === "CLIENT" ? session.clientId : session.lawyerId,
+      senderName:
+        senderRole === "CLIENT" ? session.clientName : session.lawyerName,
       senderRole,
       content,
       attachmentUrl,
@@ -339,16 +368,16 @@ export function HiLawProvider({ children }: { children: React.ReactNode }) {
     setMessages((prev) => [...prev, newMsg]);
 
     // Simulated auto-response when client sends a message
-    if (senderRole === 'CLIENT') {
+    if (senderRole === "CLIENT") {
       setTimeout(() => {
         const replyMsg: ConsultationMessage = {
           id: `msg-auto-${Date.now()}`,
           consultationId,
           senderId: session.lawyerId,
           senderName: session.lawyerName,
-          senderRole: 'LAWYER',
+          senderRole: "LAWYER",
           content:
-            'Baik, poin tersebut sudah saya catat ke dalam analisis kasus Anda. Pastikan dokumen pendukung disimpan dengan baik, dan silakan cek pembaruan pada kartu Legal Resume di panel samping.',
+            "Baik, poin tersebut sudah saya catat ke dalam analisis kasus Anda. Pastikan dokumen pendukung disimpan dengan baik, dan silakan cek pembaruan pada kartu Legal Resume di panel samping.",
           sentAt: timeStr,
         };
         setMessages((prev) => [...prev, replyMsg]);
@@ -358,10 +387,17 @@ export function HiLawProvider({ children }: { children: React.ReactNode }) {
 
   const switchSessionChannel = (
     consultationId: string,
-    channel: ConsultationChannel
+    channel: ConsultationChannel,
   ) => {
     setSessions((prev) =>
-      prev.map((s) => (s.id === consultationId ? { ...s, channel } : s))
+      prev.map((s) =>
+        s.id === consultationId
+          ? {
+              ...s,
+              channel,
+            }
+          : s,
+      ),
     );
   };
 
@@ -369,6 +405,7 @@ export function HiLawProvider({ children }: { children: React.ReactNode }) {
     const extraTokens = 25;
     if (tokenBalance < extraTokens) {
       openTopUpModal();
+
       return false;
     }
     setTokenBalance((prev) => prev - extraTokens);
@@ -381,57 +418,74 @@ export function HiLawProvider({ children }: { children: React.ReactNode }) {
               durationMinutes: s.durationMinutes + 15,
               tokensLocked: s.tokensLocked + extraTokens,
             }
-          : s
-      )
+          : s,
+      ),
     );
+
     return true;
   };
 
   const toggleLawyerAvailability = (
     lawyerId: string,
-    status: 'ONLINE' | 'BUSY' | 'OFFLINE'
+    status: "ONLINE" | "BUSY" | "OFFLINE",
   ) => {
     setLawyers((prev) =>
       prev.map((l) =>
         l.id === lawyerId
-          ? { ...l, availabilityStatus: status, isOnline: status === 'ONLINE' }
-          : l
-      )
+          ? {
+              ...l,
+              availabilityStatus: status,
+              isOnline: status === "ONLINE",
+            }
+          : l,
+      ),
     );
   };
 
-  const updateLawyerRates = (lawyerId: string, chatRate: number, callRate: number) => {
+  const updateLawyerRates = (
+    lawyerId: string,
+    chatRate: number,
+    callRate: number,
+  ) => {
     setLawyers((prev) =>
       prev.map((l) =>
         l.id === lawyerId
-          ? { ...l, tokenRateChat: chatRate, tokenRateCall: callRate }
-          : l
-      )
+          ? {
+              ...l,
+              tokenRateChat: chatRate,
+              tokenRateCall: callRate,
+            }
+          : l,
+      ),
     );
   };
 
   const submitLegalResume = (consultationId: string, summary: LegalSummary) => {
     const now = new Date();
-    const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(
-      now.getMinutes()
-    ).padStart(2, '0')}`;
+    const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(
+      now.getMinutes(),
+    ).padStart(2, "0")}`;
 
     setSessions((prev) =>
       prev.map((s) =>
         s.id === consultationId
-          ? { ...s, legalSummary: summary, status: 'COMPLETED' }
-          : s
-      )
+          ? {
+              ...s,
+              legalSummary: summary,
+              status: "COMPLETED",
+            }
+          : s,
+      ),
     );
 
     const sysNotice: ConsultationMessage = {
       id: `msg-resume-${Date.now()}`,
       consultationId,
-      senderId: 'SYSTEM',
-      senderName: 'Sistem HiLaw',
-      senderRole: 'SYSTEM',
+      senderId: "SYSTEM",
+      senderName: "Sistem HiLaw",
+      senderRole: "SYSTEM",
       content:
-        'Advokat telah menerbitkan Legal Resume (Ringkasan Hukum Resmi). Anda dapat melihat dan mengunduh dokumen PDF di panel Legal Resume.',
+        "Advokat telah menerbitkan Legal Resume (Ringkasan Hukum Resmi). Anda dapat melihat dan mengunduh dokumen PDF di panel Legal Resume.",
       sentAt: timeStr,
     };
     setMessages((prev) => [...prev, sysNotice]);
@@ -440,29 +494,30 @@ export function HiLawProvider({ children }: { children: React.ReactNode }) {
   const withdrawLawyerTokens = (tokenAmount: number, bankInfo: string) => {
     if (tokenAmount <= 0 || tokenAmount > lawyerBalance) return false;
     const now = new Date();
-    const timeStr = `2026-10-20 ${String(now.getHours()).padStart(2, '0')}:${String(
-      now.getMinutes()
-    ).padStart(2, '0')} WIB`;
+    const timeStr = `2026-10-20 ${String(now.getHours()).padStart(2, "0")}:${String(
+      now.getMinutes(),
+    ).padStart(2, "0")} WIB`;
 
     setLawyerBalance((prev) => prev - tokenAmount);
     const wdTx: TokenTransaction = {
       id: `tx-wd-${Date.now()}`,
-      userId: 'usr-lawyer-01',
+      userId: "usr-lawyer-01",
       userName: `Adv. Raka Mahendra (${bankInfo})`,
-      txType: 'WITHDRAWAL',
+      txType: "WITHDRAWAL",
       tokenDelta: -tokenAmount,
       amountIdr: tokenAmount * 1000,
       midtransOrderId: `HILAW-PAYOUT-${Math.floor(100 + Math.random() * 899)}`,
-      paymentStatus: 'SETTLEMENT',
+      paymentStatus: "SETTLEMENT",
       createdAt: timeStr,
     };
     setTransactions((prev) => [wdTx, ...prev]);
+
     return true;
   };
 
   const verifyLawyerApplication = (
     lawyerId: string,
-    decision: 'VERIFIED' | 'REJECTED'
+    decision: "VERIFIED" | "REJECTED",
   ) => {
     setLawyers((prev) =>
       prev.map((l) =>
@@ -470,15 +525,16 @@ export function HiLawProvider({ children }: { children: React.ReactNode }) {
           ? {
               ...l,
               verificationStatus: decision,
-              isOnline: decision === 'VERIFIED',
-              availabilityStatus: decision === 'VERIFIED' ? 'ONLINE' : 'OFFLINE',
+              isOnline: decision === "VERIFIED",
+              availabilityStatus:
+                decision === "VERIFIED" ? "ONLINE" : "OFFLINE",
             }
-          : l
-      )
+          : l,
+      ),
     );
   };
 
-  const addTokenPackage = (pkg: Omit<TokenPackage, 'id'>) => {
+  const addTokenPackage = (pkg: Omit<TokenPackage, "id">) => {
     const newPkg: TokenPackage = {
       ...pkg,
       id: `pkg-${Date.now()}`,
@@ -488,7 +544,7 @@ export function HiLawProvider({ children }: { children: React.ReactNode }) {
 
   const resetDemoState = () => {
     localStorage.removeItem(STORAGE_KEY);
-    setRole('CLIENT');
+    setRole("CLIENT");
     setTokenBalance(120);
     setLawyerBalance(840);
     setLawyers(MOCK_LAWYERS);
@@ -496,7 +552,7 @@ export function HiLawProvider({ children }: { children: React.ReactNode }) {
     setTransactions(MOCK_TRANSACTIONS);
     setSessions(MOCK_SESSIONS);
     setMessages(MOCK_MESSAGES);
-    setActiveSessionId('ses-active-01');
+    setActiveSessionId("ses-active-01");
     setIsConsultationOpen(false);
   };
 
@@ -544,7 +600,8 @@ export function HiLawProvider({ children }: { children: React.ReactNode }) {
 export function useHiLaw() {
   const ctx = useContext(HiLawContext);
   if (!ctx) {
-    throw new Error('useHiLaw must be used within a HiLawProvider');
+    throw new Error("useHiLaw must be used within a HiLawProvider");
   }
+
   return ctx;
 }

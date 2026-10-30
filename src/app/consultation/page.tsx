@@ -1,8 +1,5 @@
-'use client';
+﻿import { redirect } from 'next/navigation';
 
-import React from 'react';
-import ConsultationWorkspace from '@/components/ConsultationWorkspace';
-
-export default function ConsultationPage() {
-  return <ConsultationWorkspace />;
+export default function Page() {
+  redirect('/customer/consultations');
 }

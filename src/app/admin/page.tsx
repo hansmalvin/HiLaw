@@ -1,8 +1,7 @@
-'use client';
+﻿import { Dashboard } from '@/components/dashboard/Dashboard';
 
-import React from 'react';
-import AdminDashboardView from '@/components/AdminDashboardView';
-
-export default function AdminPage() {
-  return <AdminDashboardView />;
+export default function Page() {
+  return <Dashboard
+    role="ADMIN"
+  />;
 }
