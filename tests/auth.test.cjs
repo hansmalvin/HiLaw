@@ -1,69 +1,71 @@
-﻿const test = require("node:test");
-
+const test = require("node:test");
 const assert = require("node:assert/strict");
-
 const fs = require("node:fs");
-
 const vm = require("node:vm");
-
 const ts = require("typescript");
 
-const { webcrypto } = require("node:crypto");
-
-const { loadTS } = require("./load-ts.cjs");
-
-// Execute the real provider actions with browser storage and React hooks substituted.
-// Browser navigation and DOM interactions still require a manual browser check.
-
-function harness({ effects = false } = {}) {
-  const memory = () => {
-    const data = new Map();
-
-    return {
-      getItem: (k) => data.get(k) || null,
-      setItem: (k, v) => data.set(k, v),
-      removeItem: (k) => data.delete(k),
-    };
+const profile = {
+  id: "api-user",
+  full_name: "Akun Database",
+  email: "akun@example.com",
+  phone: "081234567890",
+  role: "lawyer",
+  avatar_url: null,
+  lawyer_profile: null,
+};
+const session = {
+  access_token: "test-access",
+  refresh_token: "test-refresh",
+  expires_at: 9999999999,
+};
+function harness({ handler, saved = null, effects = false } = {}) {
+  const states = [],
+    effectsQueue = [],
+    listeners = new Map(),
+    calls = [],
+    saves = [];
+  let savedSession = saved;
+  class ApiError extends Error {
+    constructor(status, message) {
+      super(message);
+      this.status = status;
+    }
+  }
+  const apiModule = {
+    ApiError,
+    api: async (path, init = {}, authenticated = true) => {
+      calls.push({ path, init, authenticated });
+      return handler
+        ? handler(path, init, authenticated, ApiError)
+        : { session, profile };
+    },
+    restoreSession: () => !!savedSession,
+    saveSession: (value, remember) => {
+      savedSession = value;
+      saves.push({ value, remember });
+    },
   };
-  const localStorage = memory(),
-    sessionStorage = memory();
-  let currentUser = null,
-    userUpdates = 0;
-  const pendingEffects = [],
-    listeners = new Map();
-  let stateIndex = 0;
   const react = {
-    createContext: () => ({
-      Provider: "provider",
-    }),
-    useContext: () => null,
-    useEffect: (callback) => pendingEffects.push(callback),
     useState: (initial) => {
-      const index = stateIndex++;
-
+      const index = states.length;
+      states.push(initial);
       return [
         initial,
-        (value) => {
-          if (index === 0) {
-            currentUser = value;
-            userUpdates++;
-          }
+        (v) => {
+          states[index] = typeof v === "function" ? v(states[index]) : v;
         },
       ];
     },
+    useRef: (value) => ({ current: value }),
+    useEffect: (callback) => effectsQueue.push(callback),
   };
   const jsx = {
-    jsx: (type, props) => ({
-      type,
-      props,
-    }),
-    jsxs: (type, props) => ({
-      type,
-      props,
-    }),
+    jsx: (type, props) => ({ type, props }),
+    jsxs: (type, props) => ({ type, props }),
   };
+  const exports = {};
   const source = ts.transpileModule(
-    fs.readFileSync("src/components/auth/AuthProvider.tsx", "utf8"),
+    fs.readFileSync("src/components/auth/BackendAuthProvider.tsx", "utf8"),
     {
       compilerOptions: {
         module: ts.ModuleKind.CommonJS,
@@ -72,131 +74,189 @@ function harness({ effects = false } = {}) {
       },
     },
   ).outputText;
-  const exports = {};
   vm.runInNewContext(source, {
     exports,
     require: (name) =>
-      name === "@/data/publicData"
-        ? loadTS("src/data/publicData.ts")
-        : name === "react"
-          ? react
-          : name === "react/jsx-runtime"
-            ? jsx
-            : require(name),
-    localStorage,
-    sessionStorage,
-    crypto: webcrypto,
-    TextEncoder,
-    console,
+      ({
+        react,
+        "react/jsx-runtime": jsx,
+        "./AuthProvider": { AuthContext: { Provider: "provider" } },
+        "@/lib/api": apiModule,
+        "@/components/ui/Toast": { Toast: () => null },
+      })[name],
     window: {
-      addEventListener: (event, callback) => listeners.set(event, callback),
-      removeEventListener: (event) => listeners.delete(event),
+      addEventListener: (key, callback) => listeners.set(key, callback),
+      removeEventListener: (key) => listeners.delete(key),
+    },
+    localStorage: {
+      getItem: () => {
+        throw new Error("Legacy account storage must not be read");
+      },
     },
   });
-  const auth = exports.AuthProvider({
-    children: null,
-  }).props.value;
-  if (effects) pendingEffects.forEach((callback) => callback());
-
+  const auth = exports.BackendAuthProvider({ children: null }).props.value;
+  if (effects) effectsQueue.forEach((callback) => callback());
   return {
     auth,
-    localStorage,
-    sessionStorage,
+    calls,
+    saves,
     get user() {
-      return currentUser;
+      return states[0];
     },
-    get userUpdates() {
-      return userUpdates;
+    get notice() {
+      return states[2];
     },
-    storageEvent: (key) =>
-      listeners.get("storage")?.({
-        key,
-      }),
+    get session() {
+      return savedSession;
+    },
+    storageEvent: (key) => listeners.get("storage")?.({ key }),
   };
 }
-
-test("demo roles authenticate and Remember Me selects storage", async () => {
-  for (const [role, email] of [
-    ["CUSTOMER", "customer@hilaw.demo"],
-    ["LAWYER", "lawyer@hilaw.demo"],
-    ["ADMIN", "admin@hilaw.demo"],
-  ]) {
-    const h = harness();
-    const account = await h.auth.signIn(email, "HiLaw123!", true);
-    assert.equal(account.role, role);
-    assert.equal(h.user.role, role);
-    assert.ok(h.localStorage.getItem("hilaw-auth-session-v1"));
-    assert.equal(h.sessionStorage.getItem("hilaw-auth-session-v1"), null);
-    await h.auth.signIn(email, "HiLaw123!", false);
-    assert.equal(h.localStorage.getItem("hilaw-auth-session-v1"), null);
-    assert.ok(h.sessionStorage.getItem("hilaw-auth-session-v1"));
-    h.auth.logout();
-    assert.equal(h.user, null);
-    assert.equal(h.sessionStorage.getItem("hilaw-auth-session-v1"), null);
-  }
-});
-
-test("invalid credentials do not establish a session", async () => {
+const flush = () => new Promise((resolve) => setImmediate(resolve));
+test("signin always calls API and uses the server profile and remember setting", async () => {
   const h = harness();
-  await assert.rejects(
-    h.auth.signIn("admin@hilaw.demo", "wrong", true),
-    /Email atau password/,
-  );
-  assert.equal(h.user, null);
+  const account = await h.auth.signIn(" akun@example.com ", "password", true);
+  assert.equal(h.calls[0].path, "/auth/signin");
+  assert.equal(h.calls[0].authenticated, false);
+  assert.equal(JSON.parse(h.calls[0].init.body).email, "akun@example.com");
+  assert.equal(account.id, profile.id);
+  assert.equal(account.role, "LAWYER");
+  assert.equal(h.saves[0].remember, true);
+  assert.equal(h.auth.switchRole, undefined);
 });
-
-test("registration persists account, rejects duplicates and excludes public admin", async () => {
-  const h = harness();
-  const input = {
-    name: "Customer Baru",
-    email: "BARU@example.com",
-    phone: "081234567890",
-    role: "CUSTOMER",
-  };
-  await h.auth.signUp(input, "DemoOnly123!");
-  assert.equal(h.user.email, "baru@example.com");
-  const saved = h.localStorage.getItem("hilaw-auth-accounts-v1");
-  assert.ok(saved);
-  assert.equal(saved.includes("DemoOnly123!"), false);
-  h.auth.logout();
-  assert.equal(
-    (await h.auth.signIn("baru@example.com", "DemoOnly123!", false)).name,
-    "Customer Baru",
-  );
-  await assert.rejects(h.auth.signUp(input, "DemoOnly123!"), /sudah terdaftar/);
-  await assert.rejects(
-    h.auth.signUp(
-      {
-        ...input,
-        email: "other@example.com",
-        role: "ADMIN",
-      },
-      "DemoOnly123!",
-    ),
-    /Pendaftaran publik/,
-  );
-});
-
-test("role switcher uses demo identities and logout clears session", () => {
-  const h = harness();
-  h.auth.switchRole("LAWYER");
-  assert.equal(h.user.id, "demo-lawyer");
-  h.auth.switchRole("ADMIN");
-  assert.equal(h.user.id, "demo-admin");
-  h.auth.logout();
-  assert.equal(h.user, null);
-});
-
-test("unrelated Coin storage events do not reauthenticate or create a synchronization feedback loop", async () => {
+test("old demo credentials cannot bypass a backend error", async () => {
   const h = harness({
-    effects: true,
+    handler: (_path, _init, _auth, ErrorType) => {
+      throw new ErrorType(401, "Email/password tidak sesuai");
+    },
   });
-  await h.auth.signIn("customer@hilaw.demo", "HiLaw123!", true);
-  const updates = h.userUpdates;
-  h.storageEvent("hilaw-coins-v1");
-  assert.equal(h.userUpdates, updates);
-  assert.equal(h.user.id, "demo-customer");
-  h.localStorage.removeItem("hilaw-auth-session-v1");
-  h.storageEvent("hilaw-auth-session-v1");
+  await assert.rejects(
+    h.auth.signIn("admin@hilaw.demo", "HiLaw123!", true),
+    /tidak sesuai/,
+  );
   assert.equal(h.user, null);
+  assert.equal(h.saves.length, 0);
+});
+test("signup posts new account to API and does not write a local account", async () => {
+  const h = harness();
+  const account = await h.auth.signUp(
+    {
+      name: "Nama Baru",
+      email: "baru@example.com",
+      phone: "081234567890",
+      role: "LAWYER",
+    },
+    "password",
+  );
+  const payload = JSON.parse(h.calls[0].init.body);
+  assert.equal(h.calls[0].path, "/auth/signup");
+  assert.equal(payload.full_name, "Nama Baru");
+  assert.equal(payload.role, "lawyer");
+  assert.equal(payload.confirm_password, "password");
+  assert.equal(account.id, profile.id);
+  assert.equal(h.saves[0].remember, false);
+});
+test("missing session requires Sign In without asking for email confirmation", async () => {
+  const h = harness({
+    handler: () => ({
+      session: null,
+      profile: null,
+      email_confirmation_required: true,
+    }),
+  });
+  assert.equal(
+    await h.auth.signUp(
+      {
+        name: "Nama Baru",
+        email: "baru@example.com",
+        phone: "",
+        role: "CUSTOMER",
+      },
+      "password",
+    ),
+    null,
+  );
+  assert.equal(h.user, null);
+  assert.equal(h.saves.length, 0);
+  assert.match(h.notice, /Sign In/);
+});
+test("session restoration reads identity from API and ignores unrelated ledger events", async () => {
+  const h = harness({ saved: session, effects: true, handler: () => profile });
+  await flush();
+  assert.equal(h.calls[0].path, "/auth/me");
+  assert.equal(h.user.id, profile.id);
+  const count = h.calls.length;
+  h.storageEvent("hilaw-coins-v1");
+  await flush();
+  assert.equal(h.calls.length, count);
+});
+test("logout revokes server session before clearing browser session", async () => {
+  const h = harness({ saved: session, handler: () => null });
+  await h.auth.logout();
+  assert.equal(h.calls[0].path, "/auth/signout");
+  assert.equal(h.session, null);
+  assert.equal(h.user, null);
+});
+test("failed signout keeps the session available for retry", async () => {
+  const h = harness({
+    saved: session,
+    handler: (_p, _i, _a, ErrorType) => {
+      throw new ErrorType(502, "Gagal mencabut sesi");
+    },
+  });
+  await assert.rejects(h.auth.logout(), /Gagal mencabut sesi/);
+  assert.equal(h.session.access_token, session.access_token);
+  assert.match(h.notice, /Gagal/);
+});
+test("a delayed restore cannot log the user back in after logout", async () => {
+  let resolveProfile;
+  const h = harness({
+    saved: session,
+    effects: true,
+    handler: (path) =>
+      path === "/auth/me"
+        ? new Promise((resolve) => {
+            resolveProfile = resolve;
+          })
+        : null,
+  });
+  await h.auth.logout();
+  resolveProfile(profile);
+  await flush();
+  assert.equal(h.user, null);
+});
+
+test("a delayed login cannot restore an account after logout", async () => {
+  let finish;
+  const h = harness({
+    handler: (path) =>
+      path === "/auth/signin"
+        ? new Promise((resolve) => {
+            finish = resolve;
+          })
+        : null,
+  });
+  const pending = h.auth.signIn("akun@example.com", "password", false);
+  await h.auth.logout();
+  finish({ session, profile });
+  await assert.rejects(pending, /dibatalkan/);
+  assert.equal(h.user, null);
+  assert.equal(h.session, null);
+});
+test("a delayed logout cannot clear a newer login session", async () => {
+  let finish;
+  const h = harness({
+    handler: (path) =>
+      path === "/auth/signout"
+        ? new Promise((resolve) => {
+            finish = resolve;
+          })
+        : { session, profile },
+  });
+  const pending = h.auth.logout();
+  await h.auth.signIn("akun@example.com", "password", false);
+  finish(null);
+  await pending;
+  assert.equal(h.user.id, profile.id);
+  assert.equal(h.session.access_token, session.access_token);
 });

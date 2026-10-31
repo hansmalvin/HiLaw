@@ -1257,11 +1257,21 @@ select {
   margin-top: 13px;
   line-height: 1.7;
 }
-.notice {
+.toast-stack {
   position: fixed;
-  bottom: 25px;
-  right: 25px;
-  max-width: 380px;
+  top: calc(80px + env(safe-area-inset-top));
+  right: 24px;
+  left: 24px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  pointer-events: none;
+}
+.notice {
+  pointer-events: auto;
+  max-width: 300px;
   background: var(--primary);
   color: white;
   padding: 15px 20px;
@@ -1621,10 +1631,12 @@ select {
   .chat-bottom {
     padding: 12px;
   }
-  .notice {
+  .toast-stack {
     left: 18px;
     right: 18px;
-    bottom: 18px;
+  }
+  .notice {
+    width: 100%;
     max-width: none;
   }
   .empty-state .button-row {
@@ -1821,6 +1833,20 @@ select {
 .auth-modal p {
   font-size: 13px;
   margin: 20px 0;
+}
+.user-initial img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+.profile-photo-preview {
+  display: block;
+  width: 96px;
+  height: 96px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  object-fit: cover;
 }
 .user-initial {
   width: 36px;
@@ -2243,9 +2269,6 @@ select {
 }
 .modal-amount small {
   font-size: 13px;
-}
-.coin-notice {
-  bottom: 95px;
 }
 .customer-stats {
   display: grid;
@@ -3180,4 +3203,285 @@ select {
     font-size: 8px;
     padding: 4px 7px;
   }
+}
+
+/* Admin tables: clearer type, warm header contrast, and visible row actions. */
+.admin-dashboard .table-scroll {
+  margin-top: 18px;
+  border: 1px solid #d8cabb;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 3px 12px #51443b08;
+  scrollbar-color: #b9a48e #f5f0e9;
+}
+.admin-dashboard .coin-table {
+  min-width: 740px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+  line-height: 1.65;
+  color: #493d33;
+}
+.admin-dashboard .coin-table th {
+  padding: 16px 18px;
+  border-bottom: 1px solid #cdbba7;
+  background: #eae0d3;
+  color: #4d3c2e;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.admin-dashboard .coin-table tbody tr {
+  --admin-row-bg: #fff;
+  background: var(--admin-row-bg);
+}
+.admin-dashboard .coin-table tbody tr:nth-child(even) {
+  --admin-row-bg: #faf7f2;
+}
+.admin-dashboard .coin-table tbody tr:hover,
+.admin-dashboard .coin-table tbody tr:focus-within {
+  --admin-row-bg: #f1e8dc;
+}
+.admin-dashboard .coin-table td {
+  padding: 17px 18px;
+  border-bottom: 1px solid #e5dbce;
+  vertical-align: middle;
+  transition: background-color 150ms ease;
+}
+.admin-dashboard .coin-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.admin-dashboard .coin-table td:first-child {
+  min-width: 150px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #493d33;
+}
+.admin-dashboard .coin-table td strong {
+  font-size: 13px;
+  font-weight: 650;
+}
+.admin-dashboard .coin-table td small {
+  max-width: 260px;
+  font-size: 11px;
+  color: #786858;
+}
+.admin-dashboard .coin-table th:last-child {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  box-shadow: -1px 0 0 #d8cabb;
+}
+.admin-dashboard .coin-table td:last-child {
+  position: sticky;
+  right: 0;
+  background: var(--admin-row-bg);
+  box-shadow: -1px 0 0 #e5dbce;
+}
+.admin-dashboard .coin-table .text-link,
+.admin-dashboard .coin-table .ops-actions button,
+.admin-dashboard .coin-table .ops-actions > a {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 1px solid #cdbba7;
+  border-radius: 8px;
+  background: #fffaf4;
+  color: #57412d;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.admin-dashboard .coin-table .text-link:hover,
+.admin-dashboard .coin-table .ops-actions button:hover,
+.admin-dashboard .coin-table .ops-actions > a:hover {
+  background: #e9ddcc;
+  border-color: #ad9377;
+}
+.admin-dashboard .coin-table .admin-table-delete {
+  background: #fff2ef;
+  border-color: #e6bfb8;
+  color: #9c3e32;
+}
+.admin-dashboard .coin-table .admin-table-delete:hover {
+  background: #fbe2dc;
+  border-color: #c78e83;
+}
+.admin-dashboard .coin-table button:focus-visible,
+.admin-dashboard .coin-table a:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+.admin-dashboard .coin-table button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.admin-dashboard .coin-table .consult-status,
+.admin-table-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.admin-table-status--pending {
+  background: #fff2d3;
+  border-color: #ead49f;
+  color: #79520e;
+}
+.admin-table-status--approved {
+  background: #eaf3e9;
+  border-color: #c4d8c1;
+  color: #365b39;
+}
+.admin-table-status--rejected {
+  background: #faeaea;
+  border-color: #e7c4c4;
+  color: #913b3b;
+}
+.admin-dashboard .table-scroll > p {
+  margin: 0;
+  padding: 28px 18px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 13px;
+}
+.admin-dashboard .dashboard-panel > .button-row {
+  align-items: center;
+  margin-top: 20px;
+  font-size: 12px;
+}
+.admin-dashboard .dashboard-panel > .button-row > button {
+  min-height: 36px;
+  padding: 8px 13px;
+  border: 1px solid #d8cabb;
+  border-radius: 8px;
+  background: #faf7f2;
+  font-weight: 600;
+}
+.admin-dashboard .dashboard-panel > .button-row > button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+@media (max-width: 767px) {
+  .admin-dashboard .coin-table th,
+  .admin-dashboard .coin-table td {
+    padding: 13px 14px;
+  }
+}
+
+.price-range-filter {
+  min-width: 0;
+  margin: 0 0 22px;
+  padding: 0;
+  border: 0;
+}
+.price-range-filter legend {
+  margin-bottom: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.price-range-values {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+.filters .price-range-values label {
+  margin: 0;
+  font-size: 10px;
+  color: var(--muted);
+}
+.price-range-values input {
+  width: 100%;
+  min-width: 0;
+  margin-top: 5px;
+  padding: 9px 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--primary);
+  font-size: 12px;
+}
+.price-range-values input:focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: 2px;
+}
+.price-range-slider {
+  position: relative;
+  height: 32px;
+  margin: 12px 9px 2px;
+}
+.price-range-track {
+  position: absolute;
+  top: 14px;
+  right: 0;
+  left: 0;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--border);
+}
+.price-range-track > div {
+  position: absolute;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+}
+.price-range-slider input[type="range"] {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+}
+.price-range-slider input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  background: transparent;
+}
+.price-range-slider input[type="range"]::-moz-range-track {
+  height: 4px;
+  background: transparent;
+}
+.price-range-slider input[type="range"]::-webkit-slider-thumb {
+  width: 18px;
+  height: 18px;
+  margin-top: -7px;
+  appearance: none;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 0 1px var(--secondary);
+  pointer-events: auto;
+  cursor: grab;
+}
+.price-range-slider input[type="range"]::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--primary);
+  box-shadow: 0 0 0 1px var(--secondary);
+  pointer-events: auto;
+  cursor: grab;
+}
+.price-range-slider input[type="range"]:focus-visible {
+  outline: 2px solid var(--secondary);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+.price-range-filter > p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 10px;
 }

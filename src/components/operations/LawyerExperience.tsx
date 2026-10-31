@@ -1,13 +1,14 @@
 ﻿"use client";
 
+import { BackendProfile } from "@/components/auth/BackendProfile";
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useCoins } from "@/store/CoinProvider";
-import { categories } from "@/data/publicData";
 import { Modal } from "@/components/ui/Modal";
+import { LawyerVerification } from "./LawyerVerification";
 import { Status, localDate } from "@/components/customer/CustomerExperience";
-import { earnings, ownedLawyer, type ManagedLawyer } from "@/store/platform";
+import { earnings, ownedLawyer } from "@/store/platform";
 import {
   rupiah,
   type ConsultationStatus,
@@ -245,7 +246,7 @@ export function SessionTable({
 }
 
 export function LawyerExperience({ section }: { section: string }) {
-  const { user, switchLawyer } = useAuth();
+  const { user } = useAuth();
   const { state, ready, error } = useCoins();
   if (!ready) return <p role="status">Memuat ruang kerja…</p>;
   if (error)
@@ -259,9 +260,6 @@ export function LawyerExperience({ section }: { section: string }) {
   if (!profile) return <p role="status">Menyiapkan profil pengacara…</p>;
   const sessions = state.consultations.filter((c) => c.lawyerId === profile.id),
     income = earnings(state, profile.id);
-  const demos = state.platform.lawyers.filter((l) =>
-    l.userId.startsWith("demo-lawyer"),
-  );
 
   return (
     <>
@@ -272,31 +270,21 @@ export function LawyerExperience({ section }: { section: string }) {
               ? "Terverifikasi"
               : profile.verification === "Pending"
                 ? "Menunggu verifikasi"
-                : "Verifikasi ditolak"}
+                : profile.verification === "Rejected"
+                  ? "Verifikasi ditolak"
+                  : "Belum diajukan"}
           </span>
           <span className="tag">
             {profile.active ? "Akun aktif" : "Dinonaktifkan"}
           </span>
           <span className="tag">{profile.online ? "Tersedia" : "Offline"}</span>
         </div>
-        {user.id.startsWith("demo-lawyer") && (
-          <label>
-            Akun pengacara demo
-            <select
-              value={profile.id}
-              onChange={(e) => switchLawyer(e.target.value)}
-            >
-              {demos.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
       </div>
+      {section === "profile" && (
+        <LawyerVerification key={profile.id + profile.verification} />
+      )}
       {section === "profile" || section === "settings" ? (
-        <LawyerProfile key={profile.id} profile={profile} />
+        <BackendProfile />
       ) : section === "earnings" ? (
         <>
           <MetricCards
@@ -372,178 +360,5 @@ export function LawyerExperience({ section }: { section: string }) {
         </>
       )}
     </>
-  );
-}
-
-function LawyerProfile({ profile }: { profile: ManagedLawyer }) {
-  const { updateLawyer } = useCoins();
-  const [form, setForm] = useState(profile),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
-
-  async function save(e: FormEvent) {
-    e.preventDefault();
-    if (busy) return;
-    setBusy(true);
-    setError("");
-    try {
-      await updateLawyer(profile.id, form);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function photo(file?: File) {
-    if (!file) return;
-    if (
-      !["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
-      file.size > 250000
-    ) {
-      setError("Gunakan foto PNG/JPEG/WebP maksimal 250 KB.");
-
-      return;
-    }
-    const reader = new FileReader();
-    reader.onerror = () => setError("Foto tidak dapat dibaca.");
-    reader.onload = () => {
-      setForm((f) => ({
-        ...f,
-        avatarUrl: String(reader.result),
-      }));
-      setError("");
-    };
-    reader.readAsDataURL(file);
-  }
-
-  return (
-    <section className="dashboard-panel">
-      <h2>Profil pengacara</h2>
-      <p className="panel-intro">
-        Profil yang aktif dan terverifikasi akan tampil di direktori publik.
-      </p>
-      <form onSubmit={save} className="auth-form ops-form">
-        <label>
-          Nama lengkap
-          <input
-            required
-            maxLength={100}
-            value={form.name}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                name: e.target.value,
-              })
-            }
-          />
-        </label>
-        <label>
-          Foto profil (maks. 250 KB)
-          <input
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            onChange={(e) => photo(e.target.files?.[0])}
-          />
-        </label>
-        {form.avatarUrl && (
-          /* eslint-disable-next-line @next/next/no-img-element */ <img
-            className="profile-preview"
-            src={form.avatarUrl}
-            alt="Pratinjau foto profil"
-          />
-        )}
-        <label>
-          Deskripsi
-          <textarea
-            rows={5}
-            required
-            maxLength={2000}
-            value={form.bio}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                bio: e.target.value,
-              })
-            }
-          />
-        </label>
-        <label>
-          Spesialisasi
-          <select
-            value={form.specialty}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                specialty: e.target.value as ManagedLawyer["specialty"],
-              })
-            }
-          >
-            {categories.map((c) => (
-              <option key={c}>{c}</option>
-            ))}
-          </select>
-        </label>
-        <div className="form-columns">
-          <label>
-            Pengalaman (tahun)
-            <input
-              type="number"
-              required
-              min={0}
-              max={60}
-              step={1}
-              value={form.experience}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  experience: Number(e.target.value),
-                })
-              }
-            />
-          </label>
-          <label>
-            Tarif (Coins / 30 menit)
-            <input
-              type="number"
-              required
-              min={1}
-              max={10000}
-              step={1}
-              value={form.rate}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  rate: Number(e.target.value),
-                })
-              }
-            />
-          </label>
-        </div>
-        <label>
-          Status ketersediaan
-          <select
-            value={form.online ? "online" : "offline"}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                online: e.target.value === "online",
-              })
-            }
-          >
-            <option value="online">Tersedia</option>
-            <option value="offline">Offline</option>
-          </select>
-        </label>
-        {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
-        )}
-        <button type="submit" className="button" disabled={busy}>
-          {busy ? "Menyimpan…" : "Simpan profil"}
-        </button>
-      </form>
-    </section>
   );
 }

@@ -8,10 +8,15 @@ import type { CoinStore, ConsultationStatus } from "./coinLedger";
 
 export interface ManagedLawyer extends PublicLawyer {
   userId: string;
-  verification: "Pending" | "Verified" | "Rejected";
+  verification: "Unsubmitted" | "Pending" | "Verified" | "Rejected";
+  licenseNumber?: string;
+  organization?: string;
+  ktaFileName?: string;
   active: boolean;
   avatarUrl?: string;
 }
+
+export const advocateOrganizations = ["PERADI", "KAI", "AAI", "IKADIN", "IPHI", "HAPI", "Lainnya"] as const;
 
 export interface ChatMessage {
   id: string;
@@ -81,6 +86,9 @@ export function initialPlatform(): PlatformData {
       userId: demoLawyerUserId(l.id),
       verification: l.id === "farhan" ? "Pending" : "Verified",
       active: true,
+      licenseNumber: "DEMO-KTA-" + l.id.toUpperCase(),
+      organization: "PERADI",
+      ktaFileName: "kta-demo-" + l.id + ".pdf",
     })),
     messages: [
       {
@@ -146,7 +154,7 @@ export function normalizePlatform(store: CoinStore): PlatformStore {
         Number.isFinite(l.reviews) &&
         typeof l.online === "boolean" &&
         typeof l.active === "boolean" &&
-        ["Pending", "Verified", "Rejected"].includes(l.verification),
+        ["Unsubmitted", "Pending", "Verified", "Rejected"].includes(l.verification),
     ) ||
     !platform.messages.every(
       (m) =>
@@ -177,7 +185,15 @@ export function normalizePlatform(store: CoinStore): PlatformStore {
 
   return {
     ...store,
-    platform,
+    platform: {
+      ...platform,
+      // Older registered accounts were marked Pending before submitting a form.
+      lawyers: platform.lawyers.map((lawyer) =>
+        lawyer.verification === "Pending" && !lawyer.ktaFileName && !lawyer.userId.startsWith("demo-lawyer")
+          ? { ...lawyer, verification: "Unsubmitted" as const }
+          : lawyer,
+      ),
+    },
   };
 }
 
@@ -209,7 +225,7 @@ export function syncUsers(
         online: false,
         photo: "",
         bio: "Lengkapi profil Anda untuk mengajukan verifikasi.",
-        verification: "Pending",
+        verification: "Unsubmitted",
         active: true,
       });
     }
@@ -373,13 +389,26 @@ export function saveLawyer(
   )
     throw new Error("Profil tidak dapat diakses.");
   let updated: ManagedLawyer;
-  if (actor.role === "ADMIN")
+  if (actor.role === "ADMIN") {
+    if (patch.verification && ((current.verification !== "Pending" && !(current.verification === "Verified" && patch.verification === "Rejected")) || !["Verified", "Rejected"].includes(patch.verification)))
+      throw new Error("Hanya pengajuan pending yang dapat disetujui atau ditolak.");
     updated = {
       ...current,
       verification: patch.verification ?? current.verification,
       active: patch.active ?? current.active,
     };
-  else {
+  } else {
+    const submitting = patch.verification === "Pending";
+    if (submitting && !["Unsubmitted", "Rejected", "Verified"].includes(current.verification))
+      throw new Error("Pengajuan sudah diproses atau sedang menunggu admin.");
+    if (!submitting && (
+      (patch.name !== undefined && patch.name.trim() !== current.name) ||
+      (patch.specialty !== undefined && patch.specialty !== current.specialty) ||
+      (patch.experience !== undefined && patch.experience !== current.experience) ||
+      (patch.licenseNumber !== undefined && patch.licenseNumber !== current.licenseNumber) ||
+      (patch.organization !== undefined && patch.organization !== current.organization) ||
+      (patch.ktaFileName !== undefined && patch.ktaFileName !== current.ktaFileName)
+    )) throw new Error("Perubahan data verifikasi harus dikirim sebagai pengajuan ulang.");
     updated = {
       ...current,
       name: patch.name?.trim() ?? current.name,
@@ -389,7 +418,17 @@ export function saveLawyer(
       rate: patch.rate ?? current.rate,
       online: patch.online ?? current.online,
       avatarUrl: patch.avatarUrl ?? current.avatarUrl,
+      ...(submitting ? {
+        verification: "Pending" as const,
+        licenseNumber: patch.licenseNumber?.trim(),
+        organization: patch.organization,
+        ktaFileName: patch.ktaFileName?.trim(),
+      } : {}),
     };
+    if (submitting && (!updated.licenseNumber || updated.licenseNumber.length > 100 ||
+      !advocateOrganizations.includes(updated.organization as typeof advocateOrganizations[number]) ||
+      !updated.ktaFileName || updated.ktaFileName.length > 255 || /[/\\\r\n]/.test(updated.ktaFileName)))
+      throw new Error("Lengkapi nomor KTA, organisasi advokat, dan nama file KTA demonstrasi.");
     if (
       !updated.name ||
       updated.name.length > 100 ||

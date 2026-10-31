@@ -230,6 +230,7 @@ function providerHarness(
     name: "Aulia Rahma",
     role: "CUSTOMER",
   },
+  platformOverride,
 ) {
   const { webcrypto } = require("node:crypto");
   const ledger = load("src/store/coinLedger.ts");
@@ -291,6 +292,7 @@ function providerHarness(
     "@/data/publicData": {
       publicLawyers,
     },
+    "@/components/ui/Toast": { Toast: () => null },
     "./coinLedger": ledger,
     "./platform": loadTS("src/store/platform.ts"),
   };
@@ -306,6 +308,7 @@ function providerHarness(
   });
   const context = exports.CoinProvider({
     children: null,
+    platformOverride,
   }).props.value;
 
   return {
@@ -324,6 +327,51 @@ function storageHarness() {
     setItem: (key, value) => values.set(key, value),
   };
 }
+
+test("backend profiles are used in memory without becoming ledger profile storage", async () => {
+  const storage = storageHarness();
+  const remote = {
+    ...publicLawyers[0],
+    id: "remote-lawyer",
+    userId: "remote-owner",
+    name: "Remote Profile",
+    verification: "Verified",
+    active: true,
+    online: true,
+  };
+  const actor = { id: "demo-customer", name: "Aulia Rahma", role: "CUSTOMER" };
+  const h = providerHarness(storage, undefined, actor, {
+    users: [],
+    lawyers: [remote],
+  });
+  await h.context.book(
+    remote.id,
+    "Konsultasi mengenai dokumen keluarga saya.",
+    "remote-booking",
+  );
+  const saved = JSON.parse(storage.getItem("hilaw-coins-v1"));
+  assert.equal(saved.consultations[0].lawyerId, remote.id);
+  assert.equal(
+    saved.platform.lawyers.some((l) => l.id === remote.id),
+    false,
+  );
+  assert.equal(
+    saved.platform.users.some((u) => u.id === remote.userId),
+    false,
+  );
+  const pending = providerHarness(storage, undefined, actor, {
+    users: [],
+    lawyers: [{ ...remote, verification: "Pending" }],
+  });
+  await assert.rejects(
+    pending.context.book(
+      remote.id,
+      "Konsultasi mengenai dokumen keluarga saya.",
+      "pending-booking",
+    ),
+    /belum aktif/,
+  );
+});
 
 test("provider persists the complete ledger before publishing balance, and rejects write failure", async () => {
   const storage = storageHarness(),

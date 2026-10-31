@@ -1,23 +1,26 @@
 ﻿"use client";
 
 import { useState, type FormEvent } from "react";
+import { AdminCustomers } from "./AdminCustomers";
+import { BackendAdminVerifications } from "./BackendVerification";
 import Link from "next/link";
 import { useCoins } from "@/store/CoinProvider";
-import { earnings, type ManagedLawyer } from "@/store/platform";
+import { earnings } from "@/store/platform";
 import { rupiah, transactionLabel } from "@/store/coinLedger";
-import { Modal } from "@/components/ui/Modal";
 import { localDate } from "@/components/customer/CustomerExperience";
 import { MetricCards, SessionTable } from "./LawyerExperience";
-import { roleLabel, type DemoUser } from "@/components/auth/AuthProvider";
 
 export function AdminExperience({ section }: { section: string }) {
   const { state, ready, error } = useCoins();
   const [query, setQuery] = useState("");
+  if (section === "customers") return <AdminCustomers />;
+  if (section === "verification" || section === "lawyers")
+    return <BackendAdminVerifications />;
   if (!ready) return <p role="status">Memuat data operasional…</p>;
   if (error && section !== "settings")
     return (
       <p className="form-error" role="alert">
-        {error} Buka Pengaturan untuk mereset data.
+        {error} Muat ulang halaman atau periksa penyimpanan browser.
       </p>
     );
   const { platform } = state,
@@ -97,34 +100,6 @@ export function AdminExperience({ section }: { section: string }) {
 
   return section === "settings" ? (
     <AdminSettings />
-  ) : section === "customers" ? (
-    <section className="dashboard-panel">
-      <h2>Kelola Customer</h2>
-      {search}
-      <UserTable
-        users={customers.filter((u) =>
-          (u.name + " " + u.email).toLowerCase().includes(query.toLowerCase()),
-        )}
-      />
-    </section>
-  ) : section === "lawyers" || section === "verification" ? (
-    <section className="dashboard-panel">
-      <h2>
-        {section === "verification"
-          ? "Verifikasi pengacara"
-          : "Kelola pengacara"}
-      </h2>
-      {search}
-      <LawyerTable
-        lawyers={platform.lawyers.filter(
-          (l) =>
-            (section !== "verification" || l.verification !== "Verified") &&
-            (l.name + " " + l.specialty)
-              .toLowerCase()
-              .includes(query.toLowerCase()),
-        )}
-      />
-    </section>
   ) : section === "consultations" ? (
     <section className="dashboard-panel">
       <h2>Kelola konsultasi</h2>
@@ -272,221 +247,12 @@ export function AdminExperience({ section }: { section: string }) {
   );
 }
 
-function UserTable({ users }: { users: DemoUser[] }) {
-  const { state } = useCoins();
-  const [selected, setSelected] = useState<DemoUser | null>(null);
-
-  return (
-    <>
-      {users.length ? (
-        <div className="table-scroll">
-          <table className="coin-table">
-            <thead>
-              <tr>
-                <th>Nama</th>
-                <th>Email</th>
-                <th>Saldo</th>
-                <th>Konsultasi</th>
-                <th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.id}>
-                  <td>{u.name}</td>
-                  <td>{u.email}</td>
-                  <td>{state.balances[u.id] ?? 0} Coins</td>
-                  <td>
-                    {
-                      state.consultations.filter((c) => c.customerId === u.id)
-                        .length
-                    }
-                  </td>
-                  <td>
-                    <button
-                      className="text-link"
-                      onClick={() => setSelected(u)}
-                    >
-                      Detail
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <p className="demo-note">Customer tidak ditemukan.</p>
-      )}
-      {selected && (
-        <Modal title="Detail Customer" onClose={() => setSelected(null)}>
-          <dl className="account-details">
-            {[
-              ["Nama", selected.name],
-              ["Email", selected.email],
-              ["Telepon", selected.phone],
-              ["Role", roleLabel[selected.role]],
-            ].map(([label, value]) => (
-              <div key={label}>
-                <dt>{label}</dt>
-                <dd>{value}</dd>
-              </div>
-            ))}
-          </dl>
-          <button
-            className="button outline modal-buttons"
-            onClick={() => setSelected(null)}
-          >
-            Tutup
-          </button>
-        </Modal>
-      )}
-    </>
-  );
-}
-
-function LawyerTable({ lawyers }: { lawyers: ManagedLawyer[] }) {
-  const { state, updateLawyer } = useCoins();
-  const [selected, setSelected] = useState<ManagedLawyer | null>(null),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
-  const current = selected
-    ? state.platform.lawyers.find((l) => l.id === selected.id)
-    : null;
-
-  async function update(patch: Partial<ManagedLawyer>) {
-    if (!current || busy) return;
-    setBusy(true);
-    setError("");
-    try {
-      await updateLawyer(current.id, patch);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <>
-      {lawyers.length ? (
-        <div className="table-scroll">
-          <table className="coin-table">
-            <thead>
-              <tr>
-                <th>Pengacara</th>
-                <th>Spesialisasi</th>
-                <th>Verifikasi</th>
-                <th>Status akun</th>
-                <th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lawyers.map((l) => (
-                <tr key={l.id}>
-                  <td>
-                    <strong>{l.name}</strong>
-                    <small>
-                      {l.experience} tahun · {l.rate} Coins
-                    </small>
-                  </td>
-                  <td>{l.specialty}</td>
-                  <td>{l.verification}</td>
-                  <td>{l.active ? "Aktif" : "Nonaktif"}</td>
-                  <td>
-                    <button
-                      className="text-link"
-                      onClick={() => {
-                        setSelected(l);
-                        setError("");
-                      }}
-                    >
-                      Tinjau profil
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="customer-empty">
-          <h3>Tidak ada pengacara untuk ditinjau</h3>
-          <p>Coba pencarian lain atau buka Kelola Pengacara.</p>
-        </div>
-      )}
-      {current && (
-        <Modal
-          title="Tinjau profil pengacara"
-          busy={busy}
-          onClose={() => setSelected(null)}
-        >
-          <h3>{current.name}</h3>
-          <p>
-            {current.specialty} · {current.experience} tahun pengalaman
-          </p>
-          <p className="payment-info">{current.bio}</p>
-          <p>
-            Verifikasi: <strong>{current.verification}</strong> · Akun:{" "}
-            <strong>{current.active ? "Aktif" : "Nonaktif"}</strong>
-          </p>
-          <p className="demo-note">
-            Peninjauan ini memakai data fiktif; tidak ada validasi dokumen
-            advokat sungguhan.
-          </p>
-          {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
-          )}
-          <div className="ops-actions modal-buttons">
-            <button
-              disabled={busy || current.verification === "Verified"}
-              onClick={() =>
-                update({
-                  verification: "Verified",
-                })
-              }
-            >
-              Verifikasi
-            </button>
-            <button
-              disabled={busy || current.verification === "Rejected"}
-              onClick={() =>
-                update({
-                  verification: "Rejected",
-                })
-              }
-            >
-              Tolak verifikasi
-            </button>
-            <button
-              disabled={busy}
-              onClick={() =>
-                update({
-                  active: !current.active,
-                })
-              }
-            >
-              {current.active ? "Nonaktifkan akun" : "Aktifkan akun"}
-            </button>
-            <button disabled={busy} onClick={() => setSelected(null)}>
-              Tutup
-            </button>
-          </div>
-        </Modal>
-      )}
-    </>
-  );
-}
-
 function AdminSettings() {
-  const { state, saveSettings, reset, error: storageError } = useCoins();
+  const { state, saveSettings, error: storageError } = useCoins();
   const [contact, setContact] = useState(state.platform.settings.contact),
     [name, setName] = useState(state.platform.settings.platformName),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState(""),
-    [confirm, setConfirm] = useState(false);
+    [error, setError] = useState("");
 
   async function save(e: FormEvent) {
     e.preventDefault();
@@ -494,21 +260,6 @@ function AdminSettings() {
     setError("");
     try {
       await saveSettings(contact, name);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function clear() {
-    setBusy(true);
-    setError("");
-    try {
-      await reset();
-      setConfirm(false);
-      setName("HiLaw");
-      setContact("halo@hilaw.example");
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -549,53 +300,6 @@ function AdminSettings() {
           </button>
         </form>
       </section>
-      <section className="dashboard-panel ops-panel">
-        <h2>Data demonstrasi</h2>
-        <p className="panel-intro">
-          Reset saldo, konsultasi, transaksi, profil pengacara, ulasan, dan
-          pesan untuk seluruh akun di browser ini. Akun pendaftaran tetap
-          disimpan.
-        </p>
-        <button
-          className="button outline"
-          disabled={busy}
-          onClick={() => {
-            setError("");
-            setConfirm(true);
-          }}
-        >
-          Reset Demo Data
-        </button>
-      </section>
-      {confirm && (
-        <Modal
-          title="Reset seluruh data demo?"
-          busy={busy}
-          onClose={() => setConfirm(false)}
-        >
-          <p>
-            Semua perubahan operasional pada browser ini akan dikembalikan ke
-            data awal. Tindakan ini menghapus riwayat chat konsultasi demo.
-          </p>
-          {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
-          )}
-          <div className="button-row modal-buttons">
-            <button
-              className="button outline"
-              disabled={busy}
-              onClick={() => setConfirm(false)}
-            >
-              Batal
-            </button>
-            <button className="button" disabled={busy} onClick={clear}>
-              {busy ? "Mereset…" : "Reset data"}
-            </button>
-          </div>
-        </Modal>
-      )}
     </>
   );
 }

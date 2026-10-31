@@ -265,7 +265,7 @@ test("Lawyer profile edits remain owned, preserve historical price and cannot se
   );
 });
 
-test("legacy store migrates without losing Coins, new Lawyer starts Pending and cannot self-approve", () => {
+test("legacy store preserves Coins and new Lawyer submits, resubmits, and waits for Admin approval", () => {
   const old = initialCoinStore(),
     s = normalizePlatform(old);
   assert.equal(s.balances["demo-customer"], 120);
@@ -279,15 +279,45 @@ test("legacy store migrates without losing Coins, new Lawyer starts Pending and 
   };
   const added = syncUsers(s, [user]);
   const profile = added.platform.lawyers.find((l) => l.userId === user.id);
-  assert.equal(profile.verification, "Pending");
+  assert.equal(profile.verification, "Unsubmitted");
   assert.equal(profile.online, false);
+  const legacyPending = {
+    ...added,
+    platform: { ...added.platform, lawyers: added.platform.lawyers.map((l) => l.id === profile.id ? { ...l, verification: "Pending" } : l) },
+  };
+  assert.equal(normalizePlatform(legacyPending).platform.lawyers.find((l) => l.id === profile.id).verification, "Unsubmitted");
   const edited = saveLawyer(added, user, profile.id, {
     verification: "Verified",
   });
   assert.equal(
     edited.platform.lawyers.find((l) => l.userId === user.id).verification,
-    "Pending",
+    "Unsubmitted",
   );
+  const admin = s.platform.users.find((u) => u.role === "ADMIN");
+  assert.throws(() => saveLawyer(added, admin, profile.id, { verification: "Verified" }), /pending/);
+  assert.throws(() => saveLawyer(added, user, profile.id, { verification: "Pending" }), /Lengkapi/);
+  const application = {
+    name: "Nama Pengacara Demo", licenseNumber: "DEMO-001", organization: "PERADI",
+    specialty: profile.specialty, experience: 3, ktaFileName: "kta-demo.pdf", verification: "Pending",
+  };
+  const pending = normalizePlatform(JSON.parse(JSON.stringify(saveLawyer(added, user, profile.id, application))));
+  assert.equal(pending.platform.lawyers.find((l) => l.id === profile.id).verification, "Pending");
+  assert.throws(() => saveLawyer(pending, user, profile.id, application), /sedang menunggu/);
+  const rejected = saveLawyer(pending, admin, profile.id, { verification: "Rejected" });
+  const resubmitted = saveLawyer(rejected, user, profile.id, { ...application, licenseNumber: "DEMO-002" });
+  const approved = saveLawyer(resubmitted, admin, profile.id, { verification: "Verified" });
+  const result = approved.platform.lawyers.find((l) => l.id === profile.id);
+  assert.equal(result.verification, "Verified");
+  assert.equal(result.licenseNumber, "DEMO-002");
+  assert.equal(result.ktaFileName, "kta-demo.pdf");
+  assert.equal(result.name, application.name);
+  assert.equal(result.active, true);
+  assert.throws(() => saveLawyer(approved, user, profile.id, { specialty: "Hukum Pidana" }), /pengajuan ulang/);
+  assert.throws(() => saveLawyer(approved, user, profile.id, { name: "Nama berbeda" }), /pengajuan ulang/);
+  assert.throws(() => saveLawyer(approved, user, profile.id, { experience: 20 }), /pengajuan ulang/);
+  const revised = saveLawyer(approved, user, profile.id, { ...application, experience: 4 });
+  assert.equal(revised.platform.lawyers.find((l) => l.id === profile.id).verification, "Pending");
+  assert.equal(revised.platform.lawyers.find((l) => l.id === profile.id).experience, 4);
   assert.throws(
     () =>
       normalizePlatform({

@@ -1,4 +1,5 @@
 ﻿"use client";
+import { Toast } from "@/components/ui/Toast";
 
 import Link from "next/link";
 import { useCoins, usePublicLawyers } from "@/store/CoinProvider";
@@ -463,24 +464,51 @@ export function Directory() {
   const params = useSearchParams();
   const initial = params.get("category") || "";
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState(initial);
-  const [price, setPrice] = useState("");
+  const [categorySelection, setCategorySelection] = useState({
+    source: initial,
+    value: categories.includes(initial as PublicCategory) ? initial : "",
+  });
+  const category =
+    categorySelection.source === initial
+      ? categorySelection.value
+      : categories.includes(initial as PublicCategory)
+        ? initial
+        : "";
+  function setCategory(value: string) {
+    setCategorySelection({ source: initial, value });
+  }
+  const [priceMin, setPriceMin] = useState(0);
+  const [priceMax, setPriceMax] = useState<number | null>(null);
   const [rating, setRating] = useState("");
   const [experience, setExperience] = useState("");
   const [sort, setSort] = useState("recommended");
-  useEffect(
-    () =>
-      setCategory(
-        categories.includes(initial as PublicCategory) ? initial : "",
-      ),
-    [initial],
-  );
+  const priceCeiling =
+    Math.ceil(
+      Math.max(
+        100,
+        priceMin,
+        priceMax ?? 0,
+        ...lawyers.map((lawyer) => lawyer.rate),
+      ) / 50,
+    ) * 50;
+  const selectedMax = priceMax ?? priceCeiling;
+  function changeMin(value: number) {
+    const next = Math.max(0, Math.min(10000, Math.round(value)));
+    setPriceMin(next);
+    if (priceMax !== null && next > priceMax) setPriceMax(next);
+  }
+  function changeMax(value: number) {
+    const next = Math.max(0, Math.min(10000, Math.round(value)));
+    setPriceMax(next);
+    if (next < priceMin) setPriceMin(next);
+  }
   const results = lawyers
     .filter(
       (l) =>
         l.name.toLowerCase().includes(query.toLowerCase()) &&
         (!category || l.specialty === category) &&
-        (!price || l.rate <= Number(price)) &&
+        l.rate >= priceMin &&
+        (priceMax === null || l.rate <= priceMax) &&
         (!rating || l.rating >= Number(rating)) &&
         (!experience || l.experience >= Number(experience)),
     )
@@ -497,7 +525,8 @@ export function Directory() {
   function reset() {
     setQuery("");
     setCategory("");
-    setPrice("");
+    setPriceMin(0);
+    setPriceMax(null);
     setRating("");
     setExperience("");
     setSort("recommended");
@@ -534,21 +563,86 @@ export function Directory() {
               ))}
             </select>
           </label>
-          <label>
-            Tarif maksimum
-            <select value={price} onChange={(e) => setPrice(e.target.value)}>
-              <option value="">Semua harga</option>
-              <option value="50">50 Coins</option>
-              <option value="75">75 Coins</option>
-              <option value="100">100 Coins</option>
-            </select>
-          </label>
+          <fieldset className="price-range-filter">
+            <legend>Rentang tarif (Coins)</legend>
+            <div className="price-range-values">
+              <label>
+                Dari
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={10000}
+                  step={1}
+                  value={priceMin}
+                  onChange={(e) => changeMin(Number(e.target.value))}
+                />
+              </label>
+              <span aria-hidden="true">-</span>
+              <label>
+                Sampai
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={10000}
+                  step={1}
+                  value={selectedMax}
+                  onChange={(e) =>
+                    e.target.value === ""
+                      ? setPriceMax(null)
+                      : changeMax(Number(e.target.value))
+                  }
+                />
+              </label>
+            </div>
+            <div className="price-range-slider">
+              <div className="price-range-track" aria-hidden="true">
+                <div
+                  style={{
+                    left: `${(priceMin / priceCeiling) * 100}%`,
+                    right: `${100 - (selectedMax / priceCeiling) * 100}%`,
+                  }}
+                />
+              </div>
+              <input
+                type="range"
+                aria-label="Tarif minimum dalam Coins"
+                min={0}
+                max={priceCeiling}
+                step={1}
+                value={priceMin}
+                style={{ zIndex: priceMin === priceCeiling ? 3 : 2 }}
+                onChange={(e) =>
+                  changeMin(Math.min(Number(e.target.value), selectedMax))
+                }
+              />
+              <input
+                type="range"
+                aria-label="Tarif maksimum dalam Coins"
+                min={0}
+                max={priceCeiling}
+                step={1}
+                value={selectedMax}
+                onChange={(e) =>
+                  changeMax(Math.max(Number(e.target.value), priceMin))
+                }
+              />
+            </div>
+            <p>
+              {priceMin.toLocaleString("id-ID")} -{" "}
+              {selectedMax.toLocaleString("id-ID")} Coins / 30 menit
+            </p>
+          </fieldset>
           <label>
             Rating minimum
             <select value={rating} onChange={(e) => setRating(e.target.value)}>
               <option value="">Semua rating</option>
-              <option value="4.8">4.8 ke atas</option>
-              <option value="4.9">4.9 ke atas</option>
+              {[1, 2, 3, 4, 5].map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
             </select>
           </label>
           <label>
@@ -1010,14 +1104,7 @@ export function Chatbot() {
           </div>
         </div>
       </div>
-      {notice && (
-        <div className="notice" role="status">
-          {notice}
-          <button aria-label="Tutup notifikasi" onClick={() => setNotice("")}>
-            ×
-          </button>
-        </div>
-      )}
+      <Toast message={notice} onClose={() => setNotice("")} />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 ﻿"use client";
+import { Toast } from "@/components/ui/Toast";
 
 import {
   createContext,
@@ -18,6 +19,7 @@ import {
   addReview,
   type ManagedLawyer,
   type PlatformStore,
+  type PlatformData,
 } from "./platform";
 import type { DemoUser } from "@/components/auth/AuthProvider";
 import type { ConsultationStatus } from "./coinLedger";
@@ -66,7 +68,13 @@ function readStore(): PlatformStore {
   return normalizePlatform(parsed);
 }
 
-export function CoinProvider({ children }: { children: ReactNode }) {
+export function CoinProvider({
+  children,
+  platformOverride,
+}: {
+  children: ReactNode;
+  platformOverride?: Pick<PlatformData, "users" | "lawyers">;
+}) {
   const { user } = useAuth();
   const [state, setState] = useState<PlatformStore>(() =>
     normalizePlatform(initialCoinStore()),
@@ -96,6 +104,12 @@ export function CoinProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
+  function withPlatform(current: PlatformStore): PlatformStore {
+    return platformOverride
+      ? { ...current, platform: { ...current.platform, ...platformOverride } }
+      : current;
+  }
+
   async function commit(
     update: (current: PlatformStore) => CoinStore,
     reset = false,
@@ -104,11 +118,17 @@ export function CoinProvider({ children }: { children: ReactNode }) {
       throw new Error("Transaksi sedang diproses. Tunggu sebentar.");
     inFlight.current = true;
     const run = async () => {
-      const next = normalizePlatform(
-        update(reset ? normalizePlatform(initialCoinStore()) : readStore()),
-      );
+      const original = reset
+        ? normalizePlatform(initialCoinStore())
+        : readStore();
+      const next = normalizePlatform(update(withPlatform(original)));
       // Persist the complete ledger before exposing the new balance to the UI.
-      localStorage.setItem(KEY, JSON.stringify(next));
+      localStorage.setItem(
+        KEY,
+        JSON.stringify(
+          platformOverride ? { ...next, platform: original.platform } : next,
+        ),
+      );
       setState(next);
       setError("");
     };
@@ -125,45 +145,6 @@ export function CoinProvider({ children }: { children: ReactNode }) {
       inFlight.current = false;
     }
   }
-  useEffect(() => {
-    if (!ready || !user) return;
-
-    async function synchronize() {
-      try {
-        const raw = JSON.parse(
-          localStorage.getItem("hilaw-auth-accounts-v1") || "[]",
-        );
-        const users: DemoUser[] = [user!];
-        if (Array.isArray(raw))
-          for (const account of raw) {
-            if (
-              account &&
-              typeof account.id === "string" &&
-              typeof account.name === "string" &&
-              typeof account.email === "string" &&
-              typeof account.phone === "string" &&
-              ["CUSTOMER", "LAWYER"].includes(account.role)
-            ) {
-              users.push({
-                id: account.id,
-                name: account.name,
-                email: account.email,
-                phone: account.phone,
-                role: account.role,
-              });
-            }
-          }
-        await commit((s) => syncUsers(s, users));
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Sinkronisasi akun gagal.",
-        );
-      }
-    }
-    void synchronize();
-    // Run once for each restored or selected identity.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, user]);
 
   function actor() {
     if (!user) throw new Error("Silakan masuk terlebih dahulu.");
@@ -296,7 +277,7 @@ export function CoinProvider({ children }: { children: ReactNode }) {
   return (
     <CoinContext.Provider
       value={{
-        state,
+        state: withPlatform(state),
         ready,
         error,
         notice,
@@ -312,17 +293,7 @@ export function CoinProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
-      {notice && (
-        <div className="notice coin-notice" role="status">
-          {notice}
-          <button
-            aria-label="Tutup notifikasi Coins"
-            onClick={() => setNotice("")}
-          >
-            ×
-          </button>
-        </div>
-      )}
+      <Toast message={notice} onClose={() => setNotice("")} />
     </CoinContext.Provider>
   );
 }

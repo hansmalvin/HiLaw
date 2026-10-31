@@ -1,19 +1,22 @@
 ﻿"use client";
 
-import { useState, useEffect, useRef, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, ShieldCheck } from "lucide-react";
-import {
-  useAuth,
-  dashboardPath,
-  demoUsers,
-  roleLabel,
-  type AuthRole,
-} from "./AuthProvider";
+import { useAuth, dashboardPath, type AuthRole } from "./AuthProvider";
 
 export default function AuthForm({ register = false }: { register?: boolean }) {
-  const submitted = useRef(false);
+  const { formVersion } = useAuth();
+  return (
+    <AuthFormFields
+      key={`${register ? "signup" : "signin"}:${formVersion}`}
+      register={register}
+    />
+  );
+}
+
+function AuthFormFields({ register }: { register: boolean }) {
   const { user, ready, signIn, signUp } = useAuth();
   const router = useRouter();
   const [name, setName] = useState(""),
@@ -28,8 +31,13 @@ export default function AuthForm({ register = false }: { register?: boolean }) {
     [error, setError] = useState(""),
     [forgot, setForgot] = useState(false);
   useEffect(() => {
-    if (ready && user && !submitted.current)
-      router.replace(dashboardPath(user.role));
+    if (!ready || !user) return;
+    const next = new URLSearchParams(window.location.search).get("next");
+    const safeNext =
+      user.role === "CUSTOMER" && next && /^\/lawyers\/[a-z0-9-]+$/.test(next)
+        ? next
+        : null;
+    router.replace(safeNext || dashboardPath(user.role));
   }, [ready, user, router]);
 
   async function submit(e: FormEvent) {
@@ -41,7 +49,6 @@ export default function AuthForm({ register = false }: { register?: boolean }) {
 
       return;
     }
-    submitted.current = true;
     setBusy(true);
     try {
       const account = register
@@ -53,23 +60,19 @@ export default function AuthForm({ register = false }: { register?: boolean }) {
               role,
             },
             password,
+            confirm,
           )
         : await signIn(email, password, remember);
-      const next = new URLSearchParams(window.location.search).get("next");
-      const safeNext =
-        account.role === "CUSTOMER" &&
-        next &&
-        /^\/lawyers\/[a-z0-9-]+$/.test(next)
-          ? next
-          : null;
-      router.replace(safeNext || dashboardPath(account.role));
+      if (!account) {
+        return;
+      }
     } catch (err) {
-      submitted.current = false;
       setError(
         err instanceof Error
           ? err.message
           : "Terjadi kendala. Silakan coba lagi.",
       );
+    } finally {
       setBusy(false);
     }
   }
@@ -99,8 +102,8 @@ export default function AuthForm({ register = false }: { register?: boolean }) {
           </p>
         </div>
         <small>
-          Simulasi frontend. Session localStorage bukan autentikasi aman untuk
-          produksi. Gunakan data dan password khusus demo.
+          Untuk tugas kuliah, Anda boleh memakai email fiktif berformat valid.
+          Akun langsung aktif tanpa verifikasi email.
         </small>
       </aside>
       <section className="auth-form-card">
@@ -111,7 +114,7 @@ export default function AuthForm({ register = false }: { register?: boolean }) {
             ? "Mulai perjalanan Anda bersama HiLaw."
             : "Masuk untuk melanjutkan ke dashboard Anda."}
         </p>
-        <form onSubmit={submit} className="auth-form">
+        <form onSubmit={submit} className="auth-form" autoComplete="off">
           {register && (
             <label>
               Nama lengkap
@@ -120,7 +123,7 @@ export default function AuthForm({ register = false }: { register?: boolean }) {
                 maxLength={80}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                autoComplete="name"
+                autoComplete="off"
                 placeholder="Nama lengkap Anda"
               />
             </label>
@@ -133,7 +136,7 @@ export default function AuthForm({ register = false }: { register?: boolean }) {
               maxLength={120}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
+              autoComplete="off"
               placeholder="nama@email.com"
             />
           </label>
@@ -147,7 +150,7 @@ export default function AuthForm({ register = false }: { register?: boolean }) {
                 title="Gunakan 9–16 karakter berupa angka, spasi, atau tanda hubung."
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                autoComplete="tel"
+                autoComplete="off"
                 placeholder="081234567890"
               />
             </label>
@@ -162,7 +165,7 @@ export default function AuthForm({ register = false }: { register?: boolean }) {
                 maxLength={128}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                autoComplete={register ? "new-password" : "current-password"}
+                autoComplete="new-password"
                 placeholder={register ? "Minimal 8 karakter" : "Password Anda"}
               />
               <button
@@ -203,14 +206,6 @@ export default function AuthForm({ register = false }: { register?: boolean }) {
           )}
           {!register && (
             <div className="auth-options">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={remember}
-                  onChange={(e) => setRemember(e.target.checked)}
-                />
-                Remember Me
-              </label>
               <button type="button" onClick={() => setForgot(true)}>
                 Forgot Password?
               </button>
@@ -232,30 +227,6 @@ export default function AuthForm({ register = false }: { register?: boolean }) {
             {register ? "Sign In" : "Sign Up"}
           </Link>
         </p>
-        {!register && (
-          <div className="demo-accounts">
-            <strong>Coba dengan akun demo</strong>
-            <p>
-              Password semua akun: <code>HiLaw123!</code>
-            </p>
-            {demoUsers.slice(0, 3).map((u) => (
-              <button
-                type="button"
-                key={u.id}
-                disabled={busy}
-                onClick={() => {
-                  setEmail(u.email);
-                  setPassword("HiLaw123!");
-                  setError("");
-                }}
-              >
-                <span>{roleLabel[u.role]}</span>
-                <small>{u.email}</small>
-                <ArrowRight size={14} />
-              </button>
-            ))}
-          </div>
-        )}
       </section>
       {forgot && (
         <div className="modal-backdrop" onClick={() => setForgot(false)}>
@@ -273,13 +244,8 @@ export default function AuthForm({ register = false }: { register?: boolean }) {
               }
             }}
           >
-            <h2 id="forgot-title">Pemulihan akun demo</h2>
-            <p>
-              Email pemulihan belum tersedia pada prototipe. Untuk akun demo
-              gunakan password <strong>HiLaw123!</strong>. Untuk akun
-              pendaftaran, gunakan password yang Anda buat atau daftar dengan
-              email demo lain.
-            </p>
+            <h2 id="forgot-title">Pemulihan akun</h2>
+            <p>Hubungi admin HiLaw untuk bantuan pemulihan akses akun Anda.</p>
             <button
               autoFocus
               className="button"

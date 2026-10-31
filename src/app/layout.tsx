@@ -4,8 +4,8 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
 import Navbar from "@/components/Navbar";
-import { AuthProvider } from "@/components/auth/AuthProvider";
-import { CoinProvider } from "@/store/CoinProvider";
+import { AppAuthProvider } from "@/components/auth/AppAuthProvider";
+import { AppCoinProvider } from "@/store/BackendCoinProvider";
 import { Footer } from "@/components/public/PublicWebsite";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -28,8 +28,9 @@ export default function RootLayout({
   return (
     <html lang="id" className={jakarta.variable}>
       <body>
-        <AuthProvider>
-          <CoinProvider>
+        <div id="toast-root" className="toast-stack" />
+        <AppAuthProvider>
+          <AppCoinProvider>
             <Suspense
               fallback={
                 <header className="site-header">
@@ -43,8 +44,8 @@ export default function RootLayout({
             </Suspense>
             <main>{children}</main>
             <Footer />
-          </CoinProvider>
-        </AuthProvider>
+          </AppCoinProvider>
+        </AppAuthProvider>
       </body>
     </html>
   );

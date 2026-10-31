@@ -1,16 +1,12 @@
 ﻿"use client";
 
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import Link from "next/link";
 import { useCoins } from "@/store/CoinProvider";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, X, Scale, Bell, Coins, ChevronDown } from "lucide-react";
 import { useState } from "react";
-import {
-  useAuth,
-  dashboardPath,
-  roleLabel,
-  type AuthRole,
-} from "./auth/AuthProvider";
+import { useAuth, roleLabel } from "./auth/AuthProvider";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false),
@@ -19,7 +15,7 @@ export default function Navbar() {
   const { state: coins, ready: coinsReady, error: coinsError } = useCoins();
   const path = usePathname(),
     router = useRouter();
-  const { user, ready, logout, switchRole } = useAuth();
+  const { user, ready, logout } = useAuth();
   const links =
     user?.role === "ADMIN"
       ? [["/admin", "Dashboard Admin"]]
@@ -160,7 +156,7 @@ export default function Navbar() {
                       setNotifications(false);
                     }}
                   >
-                    <span className="user-initial">{user.name[0]}</span>
+                    <UserAvatar name={user.name} url={user.avatarUrl} />
                     <ChevronDown size={14} />
                   </button>
                   {profile && (
@@ -192,10 +188,14 @@ export default function Navbar() {
                         Pengaturan
                       </Link>
                       <button
-                        onClick={() => {
-                          logout();
-                          close();
-                          router.push("/");
+                        onClick={async () => {
+                          try {
+                            await logout();
+                            close();
+                            router.replace("/");
+                          } catch {
+                            // AuthProvider displays the failure; retain the current session.
+                          }
                         }}
                       >
                         Logout
@@ -208,30 +208,6 @@ export default function Navbar() {
           </div>
         </nav>
       </div>
-      {ready && user && (
-        <div className="demo-role-bar">
-          <div className="container">
-            <label>
-              Demo role{" "}
-              <select
-                aria-label="Ganti role demo"
-                value={user.role}
-                onChange={(e) => {
-                  const role = e.target.value as AuthRole;
-                  switchRole(role);
-                  close();
-                  router.push(dashboardPath(role));
-                }}
-              >
-                <option value="CUSTOMER">Customer</option>
-                <option value="LAWYER">Pengacara</option>
-                <option value="ADMIN">Admin</option>
-              </select>
-            </label>
-            <small>Simulasi frontend</small>
-          </div>
-        </div>
-      )}
     </header>
   );
 }

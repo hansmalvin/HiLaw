@@ -1,5 +1,7 @@
 ﻿"use client";
 
+import { BackendProfile } from "@/components/auth/BackendProfile";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import Link from "next/link";
 import { LawyerExperience } from "@/components/operations/LawyerExperience";
 import { AdminExperience } from "@/components/operations/AdminExperience";
@@ -81,11 +83,13 @@ export function Dashboard({
   const isProfile = section === "profile" || section === "settings";
 
   return (
-    <div className="container dashboard-layout section">
+    <div
+      className={`container dashboard-layout section${role === "ADMIN" ? " admin-dashboard" : ""}`}
+    >
       <aside className="dashboard-sidebar">
         <span className="eyebrow">RUANG {roleLabel[role].toUpperCase()}</span>
         <div className="sidebar-user">
-          <span className="user-initial">{user.name[0]}</span>
+          <UserAvatar name={user.name} url={user.avatarUrl} />
           <div>
             <strong>{user.name}</strong>
             <small>{roleLabel[role]}</small>
@@ -117,7 +121,7 @@ export function Dashboard({
         </nav>
         <div className="sidebar-note">
           <ShieldCheck size={21} />
-          <p>Session demo disimpan pada browser Anda.</p>
+          <p>Profil dan verifikasi terhubung ke server.</p>
         </div>
       </aside>
       <div className="dashboard-content">
@@ -139,25 +143,7 @@ export function Dashboard({
         ) : role === "ADMIN" ? (
           <AdminExperience section={section} />
         ) : isProfile ? (
-          <section className="dashboard-panel">
-            <h2>Informasi akun</h2>
-            <dl className="account-details">
-              {[
-                ["Nama lengkap", user.name],
-                ["Email", user.email],
-                ["Nomor telepon", user.phone],
-                ["Role", roleLabel[user.role]],
-              ].map(([label, value]) => (
-                <div key={label}>
-                  <dt>{label}</dt>
-                  <dd>{value}</dd>
-                </div>
-              ))}
-            </dl>
-            <p className="demo-note">
-              Informasi akun simulasi. Logout tersedia pada menu avatar.
-            </p>
-          </section>
+          <BackendProfile />
         ) : (
           <CustomerExperience section={section} />
         )}
