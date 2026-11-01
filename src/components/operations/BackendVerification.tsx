@@ -115,7 +115,7 @@ export function BackendVerification() {
       body.append("kta_file", file);
       await api("/lawyer/verification", {
         method:
-          data?.lawyer.verification_status === "rejected" ? "PUT" : "POST",
+          data?.lawyer.verification_status === "not_submitted" ? "POST" : "PUT",
         body,
       });
       setData(await load());
@@ -141,14 +141,14 @@ export function BackendVerification() {
               : status === "pending"
                 ? "Pengajuan pending. Menunggu persetujuan admin."
                 : status === "approved"
-                  ? "Terverifikasi. Data pengajuan yang disetujui tidak dapat diubah."
+                  ? "Terverifikasi. Perubahan data harus diajukan kembali untuk persetujuan admin."
                   : status === "rejected"
                     ? "Pengajuan ditolak. Perbaiki data dan ajukan kembali."
                     : "Ajukan verifikasi agar dapat menerima konsultasi."}
           </p>
         </div>
-        <div className="flex w-full shrink-0 flex-col gap-3 md:w-auto">
-          {data && (status === "not_submitted" || status === "rejected") && (
+        <div className="flex w-full shrink-0 flex-col gap-3 md:w-auto md:flex-row md:items-center">
+          {data && status !== "pending" && (
             <button
               className="button shrink-0"
               onClick={() => {
@@ -166,7 +166,9 @@ export function BackendVerification() {
             >
               {status === "rejected"
                 ? "Perbaiki & Ajukan Ulang"
-                : "Ajukan Verifikasi"}
+                : status === "approved"
+                  ? "Edit & Ajukan Ulang"
+                  : "Ajukan Verifikasi"}
             </button>
           )}
           {data && status !== "not_submitted" && (
@@ -233,14 +235,14 @@ export function BackendVerification() {
       )}
       {open && (
         <Modal
-          title="Ajukan Verifikasi"
+          title={
+            status === "approved"
+              ? "Edit & Ajukan Ulang Verifikasi"
+              : "Ajukan Verifikasi"
+          }
           busy={busy}
           onClose={() => setOpen(false)}
         >
-          <p className="demo-note">
-            Gunakan dokumen fiktif JPG, PNG, atau PDF, maksimal 2 MB. Dokumen
-            disimpan privat dan hanya dapat diakses pemilik dan admin.
-          </p>
           <form className="auth-form ops-form" onSubmit={submit}>
             <label>
               Nama lengkap
@@ -324,7 +326,11 @@ export function BackendVerification() {
               </p>
             )}
             <button className="button" disabled={busy}>
-              {busy ? "Mengirim..." : "Kirim Pengajuan"}
+              {busy
+                ? "Mengirim..."
+                : status === "not_submitted"
+                  ? "Kirim Pengajuan"
+                  : "Kirim Pengajuan Ulang"}
             </button>
           </form>
         </Modal>

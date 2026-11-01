@@ -68,6 +68,11 @@ Jangan jalankan ulang migration 001 pada tabel yang sudah terpasang. Untuk
 perubahan berikutnya, buat migration bernomor baru. Tidak ada penghapusan tabel
 atau konversi data localStorage otomatis.
 
+Untuk mengizinkan pengacara approved mengedit dan mengajukan ulang, jalankan
+[`supabase/migrations/003_lawyer_verification_resubmission.sql`](supabase/migrations/003_lawyer_verification_resubmission.sql)
+di SQL Editor setelah migration 001. Migration ini mengganti fungsi submit tanpa
+menghapus data. Instalasi baru juga perlu menjalankan migration ini.
+
 Pendaftaran tugas kuliah tidak membutuhkan inbox atau email sungguhan. Backend
 menggunakan `auth.admin.createUser` dengan `email_confirm: true`, lalu login
 menggunakan email/password untuk mengembalikan session. Tidak ada email
@@ -164,7 +169,7 @@ kepemilikan, 404 resource, 409 transisi/duplikat, 413 ukuran JSON, 429 rate limi
 | GET    | `/lawyers`                                            | Publik, hanya approved dan field publik  |
 | GET    | `/lawyer/verification`                                | Lawyer, data dan seluruh riwayat sendiri |
 | POST   | `/lawyer/verification`                                | Lawyer, status not_submitted             |
-| PUT    | `/lawyer/verification`                                | Lawyer, status rejected                  |
+| PUT    | `/lawyer/verification`                                | Lawyer, status rejected atau approved    |
 | GET    | `/lawyer/verifications/:id/document`                  | Lawyer pemilik                           |
 | GET    | `/admin/verifications?status=pending&page=1&limit=25` | Admin                                    |
 | GET    | `/admin/verifications/:id`                            | Admin                                    |
@@ -266,11 +271,12 @@ user. MIME dan signature isi diperiksa. Gunakan dokumen fiktif, bukan KTA asli.
 Path disimpan di riwayat. Jika RPC gagal, upload baru dibersihkan; kegagalan
 cleanup dicatat agar objek orphan bisa diperiksa operator.
 
-Alur: `not_submitted -> pending -> approved/rejected`. Setelah rejected, PUT
-menambah row baru, tidak menimpa riwayat. Pending tidak bisa diajukan ulang dan
-approved tidak bisa diubah sesuai spesifikasi backend terbaru. Karena itu tombol
-edit ulang pada versi mock sebelumnya tidak ditampilkan setelah approved di
-mode backend. Hanya data approved muncul di direktori publik. Sebelum approved,
+Alur: `not_submitted -> pending -> approved/rejected`. Setelah rejected atau
+approved, PUT menambah pengajuan baru dan mengembalikan status profil menjadi
+pending, tanpa menimpa keputusan sebelumnya. Pengacara approved dapat membuka
+modal **Edit & Ajukan Ulang** di halaman profil; membuka atau membatalkan modal
+tidak mengubah status. Setiap pengajuan memerlukan unggahan KTA kembali. Pending
+tidak bisa diedit atau diajukan ulang. Hanya data approved muncul di direktori publik. Sebelum approved,
 penerimaan konsultasi simulasi juga diblokir frontend; backend konsultasi belum
 ada dan belum menjamin transaksi konsultasi nyata.
 
@@ -317,6 +323,7 @@ npm run build --prefix backend
 npm run test --prefix backend
 npx tsc --noEmit
 node --test tests/auth.test.cjs tests/coins.test.cjs tests/platform.test.cjs
+node --test tests/verification.test.cjs
 ```
 
 Tes backend memeriksa Zod, signature upload, route HTTP Express, header keamanan,
@@ -324,6 +331,12 @@ CORS, penolakan token/role, dan validasi mutasi. Transport Supabase pada tes HTT
 adalah test double; tes ini tidak membuktikan koneksi atau konfigurasi proyek
 Supabase, RLS, trigger SQL, transaksi nyata, dan upload live. Jalankan SQL dan
 skenario di bawah pada proyek Supabase Anda untuk verifikasi penuh.
+
+Setelah migration 003, pemeriksaan transaksi SQL opsional tersedia di
+[`supabase/tests/verification_resubmission.sql`](supabase/tests/verification_resubmission.sql).
+Jalankan melalui SQL Editor sebagai pemilik proyek. Tes membuat akun fiktif,
+memeriksa approved -> pending, keputusan lama, blokir pending ganda, serta
+reject/ajukan ulang/approve. Seluruh fixture dibatalkan dengan `rollback`.
 
 Skenario manual setelah konfigurasi:
 
@@ -334,7 +347,7 @@ Skenario manual setelah konfigurasi:
 5. Login admin; filter pending, buka detail dan dokumen privat.
 6. Reject dengan alasan; login lawyer dan ajukan ulang. Dua riwayat tetap ada.
 7. Approve pengajuan terakhir; cek Cari Pengacara dan profil lawyer.
-8. Coba PUT pengajuan approved; ditolak. Coba role/admin melalui profil; ditolak.
+8. Edit pengacara approved dan kirim ulang: pengajuan baru pending, keputusan lama tetap approved, tidak tampil di Cari Pengacara sampai disetujui lagi. Membatalkan edit tidak mengubah status. Coba role/admin melalui profil; ditolak.
 9. Dengan dua akun lawyer, coba id dokumen akun lain; harus 403.
 10. Dengan dua sesi admin, kirim keputusan bersamaan; hanya satu boleh berhasil.
 11. Test JPG/PNG/PDF valid, tipe palsu, dan file lebih dari 2 MB.

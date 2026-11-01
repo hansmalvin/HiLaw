@@ -151,7 +151,13 @@ export function BackendProfile() {
             </label>
             <label>
               Email
-              <input readOnly value={profile.email ?? ""} />
+              <input
+                type="email"
+                className="profile-locked-input"
+                readOnly
+                disabled
+                value={profile.email ?? ""}
+              />
             </label>
             <label>
               Nomor telepon

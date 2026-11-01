@@ -1727,6 +1727,14 @@ select {
   margin-top: 8px;
   min-width: 0;
 }
+.auth-form input.profile-locked-input:disabled {
+  background: #e2dbd2;
+  color: var(--foreground);
+  border-color: #cec2b5;
+  cursor: not-allowed;
+  opacity: 1;
+  -webkit-text-fill-color: var(--foreground);
+}
 .password-field {
   display: flex;
   align-items: center;
