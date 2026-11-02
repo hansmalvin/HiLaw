@@ -1,12 +1,5 @@
-﻿import { Suspense } from "react";
-import { publicLawyers } from "@/data/publicData";
+import { Suspense } from "react";
 import { ManagedLawyerDetail } from "@/components/public/PublicWebsite";
-
-export function generateStaticParams() {
-  return publicLawyers.map((l) => ({
-    id: l.id,
-  }));
-}
 
 async function Content({
   params,

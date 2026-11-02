@@ -320,6 +320,12 @@ export function BackendVerification() {
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
               />
             </label>
+            {status === "approved" && (
+              <p className="payment-info">
+                Setelah dikirim, status kembali menjadi pending dan profil Anda
+                disembunyikan dari direktori sampai Admin menyetujui ulang.
+              </p>
+            )}
             {error && (
               <p className="form-error" role="alert">
                 {error}

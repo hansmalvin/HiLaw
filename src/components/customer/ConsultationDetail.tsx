@@ -1,58 +1,137 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Send, MessageCircle, ShieldCheck } from "lucide-react";
+import { Clock, MessageCircle, Send, ShieldCheck, Star } from "lucide-react";
 import { useAuth, dashboardPath } from "@/components/auth/AuthProvider";
 import { useCoins } from "@/store/CoinProvider";
-import { mayReadConsultation, ownedLawyer } from "@/store/platform";
+import { api, type ApiConsultation, type ConsultationStatus } from "@/lib/api";
 import { Modal } from "@/components/ui/Modal";
 import { Status, localDate } from "./CustomerExperience";
 
+interface Detail extends ApiConsultation {
+  review: { rating: number; body: string | null } | null;
+}
+interface Thread {
+  status: ConsultationStatus;
+  started_at: string | null;
+  items: {
+    id: string;
+    sender_id: string | null;
+    sender_name: string;
+    body: string;
+    created_at: string;
+  }[];
+}
+
 export function ConsultationDetail({ id }: { id: string }) {
   const { user, ready: authReady } = useAuth();
-  const { state, ready, error, sendMessage, transition } = useCoins();
+  const { transition } = useCoins();
   const router = useRouter();
-  const [input, setInput] = useState(""),
+  const [detail, setDetail] = useState<Detail | null>(null),
+    [thread, setThread] = useState<Thread | null>(null),
+    [loadError, setLoadError] = useState(""),
+    [now, setNow] = useState(0),
+    [input, setInput] = useState(""),
     [busy, setBusy] = useState(false),
     [failure, setFailure] = useState(""),
-    [end, setEnd] = useState(false);
+    [confirm, setConfirm] = useState<ConsultationStatus | null>(null),
+    [reviewLater, setReviewLater] = useState(false);
   const locked = useRef(false),
     request = useRef(""),
     bottom = useRef<HTMLDivElement>(null);
-  const messages = state.platform.messages.filter(
-    (m) => m.consultationId === id,
-  );
+  const status = thread?.status ?? detail?.status;
+
   useEffect(() => {
-    if (authReady && !user) router.replace("/sign-in");
-  }, [authReady, user, router]);
+    if (authReady && !user)
+      router.replace("/sign-in?next=" + encodeURIComponent("/consultations/" + id));
+  }, [authReady, user, router, id]);
+
+  // Re-read the details whenever polling sees the status change (e.g. the lawyer starts the session).
   useEffect(() => {
-    bottom.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-    });
-  }, [messages.length, id]);
-  if (!authReady || !ready || !user)
+    if (!user) return;
+    let active = true;
+    api<Detail>("/consultations/" + id)
+      .then((d) => active && setDetail(d))
+      .catch((e) => active && setLoadError((e as Error).message));
+    return () => {
+      active = false;
+    };
+  }, [id, user, thread?.status]);
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    const tick = () => {
+      if (document.visibilityState !== "visible") return;
+      api<Thread>("/consultations/" + id + "/messages")
+        .then((t) => {
+          if (!active) return;
+          setThread(t);
+          setNow(Date.now());
+        })
+        .catch(() => {});
+    };
+    tick();
+    // shortcut: 3s polling is enough for two people chatting; move to Supabase Realtime for many concurrent rooms.
+    const timer = setInterval(tick, 3000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [id, user]);
+
+  // A one-second clock for the countdown while the session runs; polling ends it on the server.
+  useEffect(() => {
+    if (status !== "Ongoing") return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [status]);
+
+  useEffect(() => {
+    bottom.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [thread?.items.length]);
+
+  if (!authReady || !user || (!detail && !loadError))
     return (
       <div className="container section" role="status">
         Memuat konsultasi…
       </div>
     );
-  const c = state.consultations.find((c) => c.id === id);
-  if (error || !c || !mayReadConsultation(state, user, id))
+  if (!detail)
     return (
       <div className="container section empty-state">
         <h1>Konsultasi tidak tersedia</h1>
-        <p>{error || "Konsultasi tidak ditemukan pada akun Anda."}</p>
+        <p>{loadError}</p>
         <Link className="button outline" href={dashboardPath(user.role)}>
           Kembali ke dashboard
         </Link>
       </div>
     );
-  const lawyer =
-      user.role === "LAWYER" && ownedLawyer(state, user)?.id === c.lawyerId,
-    participant = user.role === "CUSTOMER" || lawyer;
+  const c = detail,
+    current = status ?? c.status,
+    lawyer = c.lawyer_user_id === user.id,
+    customer = c.customer_id === user.id,
+    participant = lawyer || customer,
+    startedAt = thread?.started_at ?? c.started_at,
+    remaining =
+      current === "Ongoing" && startedAt && now
+        ? Math.max(
+            0,
+            Math.ceil(
+              (Date.parse(startedAt) + c.duration_minutes * 60000 - now) / 1000,
+            ),
+          )
+        : null,
+    endedByTimer =
+      current === "Completed" &&
+      !!c.started_at &&
+      !!c.ended_at &&
+      Date.parse(c.ended_at) - Date.parse(c.started_at) >=
+        c.duration_minutes * 60000,
+    askReview =
+      customer && current === "Completed" && !c.review && !reviewLater;
 
   async function send(e: FormEvent) {
     e.preventDefault();
@@ -60,9 +139,15 @@ export function ConsultationDetail({ id }: { id: string }) {
     locked.current = true;
     setBusy(true);
     setFailure("");
+    // Reusing the id on retry lets the server ignore a duplicate send.
     if (!request.current) request.current = crypto.randomUUID();
     try {
-      await sendMessage(id, input, request.current);
+      setThread(
+        await api<Thread>("/consultations/" + id + "/messages", {
+          method: "POST",
+          body: JSON.stringify({ id: request.current, body: input }),
+        }),
+      );
       setInput("");
       request.current = "";
     } catch (err) {
@@ -73,14 +158,15 @@ export function ConsultationDetail({ id }: { id: string }) {
     }
   }
 
-  async function status(next: "Ongoing" | "Completed") {
+  async function changeStatus(next: ConsultationStatus) {
     if (locked.current) return;
     locked.current = true;
     setBusy(true);
     setFailure("");
     try {
       await transition(id, next);
-      setEnd(false);
+      setThread(await api<Thread>("/consultations/" + id + "/messages"));
+      setConfirm(null);
     } catch (err) {
       setFailure((err as Error).message);
     } finally {
@@ -96,7 +182,7 @@ export function ConsultationDetail({ id }: { id: string }) {
         href={
           user.role === "ADMIN"
             ? "/admin/consultations"
-            : user.role === "LAWYER"
+            : lawyer
               ? "/lawyer/active"
               : "/customer/consultations"
         }
@@ -110,14 +196,26 @@ export function ConsultationDetail({ id }: { id: string }) {
               <MessageCircle size={22} />
             </span>
             <div>
-              <strong>
-                {user.role === "CUSTOMER" ? c.lawyerName : c.customerName}
-              </strong>
+              <strong>{lawyer ? c.customer_name : c.lawyer_name}</strong>
               <small>
-                {c.specialty} · Chat {c.duration} menit
+                {c.specialization} · Chat {c.duration_minutes} menit
               </small>
             </div>
-            <Status status={c.status} />
+            {remaining !== null && (
+              <span
+                className={"session-timer" + (remaining <= 300 ? " ending" : "")}
+                role="timer"
+                aria-label="Sisa waktu sesi"
+              >
+                <Clock size={14} />
+                {remaining > 0
+                  ? Math.floor(remaining / 60) +
+                    ":" +
+                    String(remaining % 60).padStart(2, "0")
+                  : "Mengakhiri sesi…"}
+              </span>
+            )}
+            <Status status={current} />
           </header>
           <div
             className="chat-messages room-messages"
@@ -125,19 +223,19 @@ export function ConsultationDetail({ id }: { id: string }) {
             aria-label="Riwayat chat konsultasi"
             aria-live="polite"
           >
-            {messages.length ? (
-              messages.map((m) => (
+            {thread?.items.length ? (
+              thread.items.map((m) => (
                 <div
                   key={m.id}
                   className={
-                    "message " + (m.senderId === user.id ? "user" : "assistant")
+                    "message " + (m.sender_id === user.id ? "user" : "assistant")
                   }
                 >
                   <div>
-                    <strong className="message-author">{m.senderName}</strong>
-                    <p>{m.text}</p>
-                    <time dateTime={m.createdAt}>
-                      {localDate(m.createdAt)} WIB
+                    <strong className="message-author">{m.sender_name}</strong>
+                    <p>{m.body}</p>
+                    <time dateTime={m.created_at}>
+                      {localDate(m.created_at)} WIB
                     </time>
                   </div>
                 </div>
@@ -146,32 +244,38 @@ export function ConsultationDetail({ id }: { id: string }) {
               <div className="customer-empty">
                 <MessageCircle size={30} />
                 <h3>
-                  {c.status === "Ongoing"
+                  {current === "Ongoing"
                     ? "Mulai percakapan Anda"
                     : "Belum ada pesan"}
                 </h3>
                 <p>
-                  {c.status === "Pending"
+                  {current === "Pending"
                     ? "Menunggu pengacara menerima permintaan."
-                    : c.status === "Confirmed"
-                      ? "Pengacara dapat memulai sesi untuk mengaktifkan chat."
-                      : "Percakapan Anda akan tersimpan pada browser ini."}
+                    : current === "Confirmed"
+                      ? "Pengacara dapat memulai sesi untuk membuka chat."
+                      : current === "Ongoing"
+                        ? "Pesan baru muncul otomatis untuk kedua peserta."
+                        : "Tidak ada pesan pada konsultasi ini."}
                 </p>
               </div>
             )}
             <div ref={bottom} />
           </div>
           <div className="chat-bottom">
-            {failure && (
+            {failure && !confirm && (
               <p className="form-error" role="alert">
                 {failure}
               </p>
             )}
-            {c.status === "Ongoing" && participant ? (
+            {current === "Ongoing" && participant ? (
               <form onSubmit={send}>
                 <input
                   aria-label="Pesan konsultasi"
-                  placeholder="Tulis pesan untuk peserta konsultasi…"
+                  placeholder={
+                    "Tulis pesan untuk " +
+                    (lawyer ? c.customer_name : c.lawyer_name) +
+                    "…"
+                  }
                   maxLength={2000}
                   value={input}
                   disabled={busy}
@@ -191,80 +295,128 @@ export function ConsultationDetail({ id }: { id: string }) {
               </form>
             ) : (
               <p className="disclaimer">
-                {user.role === "ADMIN"
+                {!participant
                   ? "Tampilan monitoring Admin. Admin tidak dapat mengirim pesan."
-                  : c.status === "Completed"
-                    ? "Konsultasi selesai. Riwayat pesan dapat dibaca kembali."
-                    : c.status === "Cancelled"
-                      ? "Konsultasi dibatalkan. Coins sudah dikembalikan."
+                  : current === "Completed"
+                    ? endedByTimer
+                      ? "Waktu " +
+                        c.duration_minutes +
+                        " menit habis, sesi berakhir otomatis. Riwayat pesan tetap dapat dibaca."
+                      : "Konsultasi selesai. Riwayat pesan dapat dibaca kembali."
+                    : current === "Cancelled"
+                      ? "Konsultasi dibatalkan. Poin sudah dikembalikan."
                       : "Chat aktif setelah sesi dimulai oleh pengacara."}
               </p>
             )}
-            <p className="disclaimer">
-              Simulasi frontend · Pesan disimpan secara lokal pada browser ini.
-            </p>
           </div>
         </section>
         <aside className="dashboard-panel room-info">
           <h2>Informasi konsultasi</h2>
-          <Status status={c.status} />
+          <Status status={current} />
           <dl className="account-details">
             <div>
               <dt>Customer</dt>
-              <dd>{c.customerName}</dd>
+              <dd>{c.customer_name}</dd>
             </div>
             <div>
               <dt>Pengacara</dt>
-              <dd>{c.lawyerName}</dd>
+              <dd>{c.lawyer_name}</dd>
             </div>
             <div>
-              <dt>Biaya</dt>
-              <dd>{c.rate} Coins</dd>
+              <dt>Paket</dt>
+              <dd>
+                {c.duration_minutes} menit · {c.rate} Poin
+              </dd>
             </div>
             <div>
               <dt>Tanggal WIB</dt>
-              <dd>{localDate(c.createdAt)}</dd>
+              <dd>{localDate(c.created_at)}</dd>
             </div>
           </dl>
           <h3>Kronologi singkat</h3>
           <p className="brief-text">{c.brief}</p>
-          {c.status === "Confirmed" && lawyer && (
+          {current === "Pending" && lawyer && (
             <button
               className="button"
               disabled={busy}
-              onClick={() => status("Ongoing")}
+              onClick={() => changeStatus("Confirmed")}
+            >
+              Terima permintaan
+            </button>
+          )}
+          {current === "Confirmed" && lawyer && (
+            <button
+              className="button"
+              disabled={busy}
+              onClick={() => changeStatus("Ongoing")}
             >
               Mulai sesi
             </button>
           )}
-          {c.status === "Ongoing" && participant && (
+          {current === "Ongoing" && participant && (
             <button
               className="button outline"
               disabled={busy}
-              onClick={() => setEnd(true)}
+              onClick={() => setConfirm("Completed")}
             >
               Akhiri konsultasi
             </button>
           )}
-          {c.status === "Completed" && user.role === "CUSTOMER" && (
-            <ReviewForm id={id} />
+          {current === "Pending" && (participant || user.role === "ADMIN") && (
+            <button
+              className="button outline"
+              disabled={busy}
+              onClick={() => setConfirm("Cancelled")}
+            >
+              {lawyer ? "Tolak & refund" : "Batalkan & refund"}
+            </button>
+          )}
+          {current === "Completed" && customer && c.review && (
+            <div className="payment-info">
+              <strong>Ulasan Anda · {"★".repeat(c.review.rating)}</strong>
+              {c.review.body && <p>{c.review.body}</p>}
+            </div>
+          )}
+          {current === "Completed" && customer && !c.review && (
+            <button className="button" onClick={() => setReviewLater(false)}>
+              <Star size={16} /> Beri ulasan
+            </button>
           )}
           <p className="payment-info">
-            <ShieldCheck size={17} /> Gunakan data fiktif dalam demo. Percakapan
-            dapat diakses peserta serta Admin pada browser yang sama.
+            <ShieldCheck size={17} /> Percakapan hanya dapat dibaca kedua
+            peserta dan Admin HiLaw.
           </p>
         </aside>
       </div>
-      {end && (
+      {askReview && !confirm && (
         <Modal
-          title="Akhiri konsultasi?"
-          busy={busy}
-          onClose={() => setEnd(false)}
+          title="Bagaimana konsultasi Anda?"
+          onClose={() => setReviewLater(true)}
         >
           <p>
-            Sesi akan menjadi Completed dan chat beralih menjadi riwayat yang
-            dapat dibaca. Pendapatan simulasi dibagi 20% untuk HiLaw dan 80%
-            untuk pengacara.
+            {endedByTimer ? "Waktu sesi telah habis. " : "Sesi telah selesai. "}
+            Beri rating untuk {c.lawyer_name}. Ulasan membantu customer lain
+            memilih pengacara.
+          </p>
+          <ReviewForm
+            id={id}
+            onSaved={setDetail}
+            onLater={() => setReviewLater(true)}
+          />
+        </Modal>
+      )}
+      {confirm && (
+        <Modal
+          title={
+            confirm === "Completed" ? "Akhiri konsultasi?" : "Batalkan konsultasi?"
+          }
+          busy={busy}
+          onClose={() => setConfirm(null)}
+        >
+          <p>
+            {confirm === "Completed"
+              ? "Sesi selesai lebih awal dan chat beralih menjadi riwayat. Sisa waktu tidak dikembalikan sebagai Poin. Pengacara menerima 80% biaya, 20% untuk HiLaw."
+              : `${c.rate} Poin dikembalikan penuh ke saldo Customer.`}
           </p>
           {failure && (
             <p className="form-error" role="alert">
@@ -275,16 +427,16 @@ export function ConsultationDetail({ id }: { id: string }) {
             <button
               className="button outline"
               disabled={busy}
-              onClick={() => setEnd(false)}
+              onClick={() => setConfirm(null)}
             >
-              Lanjutkan chat
+              Kembali
             </button>
             <button
               className="button"
               disabled={busy}
-              onClick={() => status("Completed")}
+              onClick={() => changeStatus(confirm)}
             >
-              {busy ? "Memproses…" : "Akhiri konsultasi"}
+              {busy ? "Memproses…" : "Ya, lanjutkan"}
             </button>
           </div>
         </Modal>
@@ -293,20 +445,44 @@ export function ConsultationDetail({ id }: { id: string }) {
   );
 }
 
-function ReviewForm({ id }: { id: string }) {
-  const { state, review } = useCoins();
-  const [rating, setRating] = useState(5),
+const ratingLabels = [
+  "Pilih 1–5 bintang",
+  "Sangat kurang",
+  "Kurang",
+  "Cukup",
+  "Baik",
+  "Sangat baik",
+];
+
+function ReviewForm({
+  id,
+  onSaved,
+  onLater,
+}: {
+  id: string;
+  onSaved: (detail: Detail) => void;
+  onLater: () => void;
+}) {
+  const [rating, setRating] = useState(0),
     [text, setText] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
-  const existing = state.platform.reviews.find((r) => r.consultationId === id);
 
   async function save(e: FormEvent) {
     e.preventDefault();
+    if (!rating) return;
     setBusy(true);
     setError("");
     try {
-      await review(id, rating, text);
+      onSaved(
+        await api<Detail>("/consultations/" + id + "/review", {
+          method: "POST",
+          body: JSON.stringify({
+            rating,
+            ...(text.trim() ? { body: text } : {}),
+          }),
+        }),
+      );
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -314,36 +490,38 @@ function ReviewForm({ id }: { id: string }) {
     }
   }
 
-  return existing ? (
-    <div className="payment-info">
-      <strong>Ulasan Anda · {existing.rating}/5</strong>
-      <p>{existing.text}</p>
-    </div>
-  ) : (
-    <form onSubmit={save} className="auth-form">
-      <h3>Bagaimana konsultasi Anda?</h3>
+  return (
+    <form onSubmit={save} className="auth-form review-form">
+      <div
+        className="star-rating"
+        role="radiogroup"
+        aria-label="Rating bintang"
+      >
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            role="radio"
+            aria-checked={rating === n}
+            aria-label={n + " bintang"}
+            className={n <= rating ? "on" : ""}
+            onClick={() => setRating(n)}
+          >
+            <Star size={32} fill={n <= rating ? "currentColor" : "none"} />
+          </button>
+        ))}
+      </div>
+      <p className="rating-label" aria-live="polite">
+        {ratingLabels[rating]}
+      </p>
       <label>
-        Rating
-        <select
-          value={rating}
-          onChange={(e) => setRating(Number(e.target.value))}
-        >
-          {[5, 4, 3, 2, 1].map((n) => (
-            <option key={n} value={n}>
-              {n} bintang
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        Ulasan
+        Deskripsi (opsional)
         <textarea
-          required
-          minLength={5}
           maxLength={1000}
           rows={3}
           value={text}
           onChange={(e) => setText(e.target.value)}
+          placeholder="Ceritakan pengalaman konsultasi Anda…"
         />
       </label>
       {error && (
@@ -351,9 +529,19 @@ function ReviewForm({ id }: { id: string }) {
           {error}
         </p>
       )}
-      <button className="button" disabled={busy}>
-        {busy ? "Menyimpan…" : "Kirim ulasan"}
-      </button>
+      <div className="button-row modal-buttons">
+        <button
+          type="button"
+          className="button outline"
+          disabled={busy}
+          onClick={onLater}
+        >
+          Nanti saja
+        </button>
+        <button className="button" disabled={busy || !rating}>
+          {busy ? "Menyimpan…" : "Kirim ulasan"}
+        </button>
+      </div>
     </form>
   );
 }

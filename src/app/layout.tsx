@@ -1,11 +1,11 @@
-﻿import { Suspense } from "react";
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
 import Navbar from "@/components/Navbar";
 import { AppAuthProvider } from "@/components/auth/AppAuthProvider";
-import { AppCoinProvider } from "@/store/BackendCoinProvider";
+import { CoinProvider } from "@/store/CoinProvider";
 import { Footer } from "@/components/public/PublicWebsite";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -30,7 +30,7 @@ export default function RootLayout({
       <body>
         <div id="toast-root" className="toast-stack" />
         <AppAuthProvider>
-          <AppCoinProvider>
+          <CoinProvider>
             <Suspense
               fallback={
                 <header className="site-header">
@@ -44,7 +44,7 @@ export default function RootLayout({
             </Suspense>
             <main>{children}</main>
             <Footer />
-          </AppCoinProvider>
+          </CoinProvider>
         </AppAuthProvider>
       </body>
     </html>

@@ -27,7 +27,7 @@ const menus: Record<AuthRole, [string, string][]> = {
   CUSTOMER: [
     ["dashboard", "Dashboard"],
     ["consultations", "Konsultasi Saya"],
-    ["top-up", "HiLaw Coins"],
+    ["top-up", "Poin HiLaw"],
     ["transactions", "Riwayat Transaksi"],
     ["profile", "Profil"],
   ],
@@ -45,7 +45,7 @@ const menus: Record<AuthRole, [string, string][]> = {
     ["lawyers", "Kelola Pengacara"],
     ["verification", "Verifikasi Pengacara"],
     ["consultations", "Kelola Konsultasi"],
-    ["transactions", "Transaksi Coins"],
+    ["transactions", "Transaksi Poin"],
     ["reports", "Laporan Pendapatan"],
     ["settings", "Pengaturan"],
   ],

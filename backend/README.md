@@ -63,7 +63,8 @@ public atau izin upload langsung dari frontend. Semua upload/download melalui
 Express dengan service role setelah pemeriksaan autentikasi dan kepemilikan.
 Dokumen tidak disimpan sebagai URL publik atau di localStorage.
 
-SQL ini tidak membuat tabel Coins, konsultasi, pembayaran, atau chatbot.
+Migration 001 tidak membuat tabel Poin, konsultasi, atau chat; tabel tersebut
+dibuat oleh migration 004 (lihat bagian akhir dokumen ini).
 Jangan jalankan ulang migration 001 pada tabel yang sudah terpasang. Untuk
 perubahan berikutnya, buat migration bernomor baru. Tidak ada penghapusan tabel
 atau konversi data localStorage otomatis.
@@ -252,8 +253,8 @@ password, menghapus objek KTA melalui Storage API lalu akun Auth. FK cascade
 menghapus profil dan riwayat; reviewer yang dihapus menjadi null pada riwayat
 akun lain. Storage dan Auth bukan satu transaksi lintas layanan: jika penghapusan
 Auth gagal setelah file dihapus, akun tetap ada tetapi file perlu diunggah ulang.
-Jangan menghapus objek Storage dengan DELETE SQL. Data simulasi Coins/konsultasi
-pada browser tidak termasuk tabel backend dan resetnya tetap lewat Reset Demo.
+Jangan menghapus objek Storage dengan DELETE SQL. FK cascade juga menghapus dompet
+Poin, transaksi, dan konsultasi milik akun tersebut.
 
 ### Form verifikasi
 
@@ -299,7 +300,7 @@ dicabut saat komponen dilepas. Response memakai `Cache-Control: no-store`.
 ## 6. Integrasi frontend dan fitur yang masih mock
 
 `src/lib/api.ts` merupakan API client terpusat. `AppAuthProvider` selalu memakai autentikasi backend. `BackendAuthProvider`, `BackendProfile`, `BackendVerification`,
-`BackendAdminVerifications`, dan `AppCoinProvider` menyesuaikan kontrak API ke UI.
+`BackendAdminVerifications`, dan `CoinProvider` menyesuaikan kontrak API ke UI.
 Tidak perlu memasang Supabase SDK di frontend atau membuka service role key.
 
 Autentikasi, profil, status/riwayat/dokumen verifikasi, keputusan Admin, dan daftar
@@ -308,12 +309,10 @@ disalin ke penyimpanan ledger lokal. Data demo lama tidak otomatis dimigrasikan
 atau dihapus. Daftarkan akun baru di Supabase; akun `@hilaw.demo` lama bukan akun
 Supabase dan tidak dapat digunakan di mode backend.
 
-Tetap mock/local: saldo Coins, top-up, pembayaran, konsultasi, chat, pendapatan,
-ulasan, chatbot, pengaturan platform, metrik operasional lainnya.
-Tarif dan ketersediaan tetap preferensi simulasi lokal; rating pengacara backend
-mulai 0 karena belum ada tabel ulasan. Reset Demo tidak menghapus akun atau data
-Supabase. Dashboard admin Verifikasi/Kelola Pengacara menggunakan daftar riwayat
-API dengan filter dan pagination; tab operasional lain belum mempunyai API.
+Sejak migration 004, saldo Poin, top up (simulasi), konsultasi, chat, pendapatan,
+ulasan, tarif, dan status online pengacara juga tersimpan di Supabase. Yang masih
+simulasi hanya pembayaran top up (belum memakai Midtrans). Lihat bagian
+"Sistem Poin, Chat Room & Chatbot" di bawah.
 
 ## 7. Pengujian
 
@@ -413,8 +412,7 @@ bukan indikator bahwa pengguna sedang online.
 Admin harus mengetik DELETE pada dialog konfirmasi. Penghapusan hanya menerima
 akun customer; Admin, Lawyer, dan akun admin sendiri dilindungi. Backend menghapus
 akun melalui Supabase Auth dan FK cascade menghapus profil terkait. Tidak perlu
-migration SQL tambahan. Saldo dan konsultasi yang masih berupa simulasi browser
-tidak diubah menjadi tabel backend pada fitur ini.
+migration SQL tambahan. FK cascade ikut menghapus dompet Poin dan konsultasi customer.
 
 Smoke test langsung dengan dua akun sementara (dibersihkan sesudah tes):
 
@@ -423,8 +421,7 @@ npm run build --prefix backend
 node backend/scripts/test-admin-customers.mjs
 ```
 
-Manajemen customer sekarang memakai API; metrik operasional Coins/konsultasi
-lain tetap simulasi.
+Manajemen customer, Poin, dan konsultasi memakai API.
 
 ## Upload foto profil customer
 
@@ -469,3 +466,99 @@ Smoke test foto pengacara memakai akun sementara yang dibersihkan setelah tes:
 npm run build --prefix backend
 node backend/scripts/test-avatar.mjs --lawyer
 ```
+
+## Sistem Poin, Chat Room & Chatbot (migration 004)
+
+Spesifikasi lengkap ada di [`PRD.md`](../PRD.md).
+
+### 1. Jalankan migration 004 (wajib, sekali)
+
+Buka Supabase > SQL Editor > New query, tempel seluruh isi
+[`supabase/migrations/004_points_chat.sql`](supabase/migrations/004_points_chat.sql),
+lalu Run. Migration ini **hanya menambah** (tidak menghapus data):
+
+- kolom `rate_points` dan `is_online` di `lawyer_profiles`;
+- tabel `wallets`, `point_transactions`, `consultations`, `consultation_messages`, `reviews`;
+- fungsi atomik `topup_points`, `book_consultation`, `transition_consultation`;
+- `update_own_profile` versi baru (menerima tarif dan status online pengacara).
+
+Tanpa migration ini endpoint `/lawyers` gagal karena kolom `rate_points` belum ada.
+Pemeriksaan opsional: jalankan [`supabase/tests/points_chat.sql`](supabase/tests/points_chat.sql)
+di SQL Editor. Hasil yang diharapkan adalah notice `PASS`. Seluruh data uji di-rollback.
+
+### 1b. Jalankan migration 005 (paket sesi & batas waktu)
+
+Setelah 004, jalankan [`supabase/migrations/005_session_packages.sql`](supabase/migrations/005_session_packages.sql)
+dengan cara yang sama. Migration ini menambah paket 15/30/60 menit, penutupan sesi otomatis saat
+waktu habis, dan membuat teks ulasan opsional. **Tanpa 005, pemesanan konsultasi gagal**, karena
+backend sudah mengirim durasi paket. Tes opsional: [`supabase/tests/session_packages.sql`](supabase/tests/session_packages.sql).
+
+### 2. Aturan Poin
+
+1 Poin = Rp1.000. Paket top up: 50/100/250/500 (customer saja, simulasi). Paket sesi chat:
+Kilat 15 menit (60% tarif dasar), Standar 30 menit (100%), Mendalam 60 menit (180%), dibulatkan
+ke atas. Sesi berakhir otomatis saat durasi habis. Poin
+dipotong saat memesan (Pending), dikembalikan penuh bila dibatalkan saat Pending,
+dan saat Completed pengacara menerima `tarif - floor(tarif x 20%)` sebagai Poin.
+Setiap mutasi saldo berjalan di satu fungsi Postgres dengan row lock dan
+`request_id` idempoten, sehingga klik ganda tidak memotong dua kali.
+
+### 3. Endpoint baru
+
+| Method | Endpoint                             | Akses                                  |
+| ------ | ------------------------------------ | -------------------------------------- |
+| GET    | `/wallet`                            | Login: saldo + 50 transaksi terakhir   |
+| POST   | `/wallet/topup`                      | Customer `{amount, method, request_id}` |
+| GET    | `/consultations`                     | Login (admin: semua)                   |
+| POST   | `/consultations`                     | Customer `{lawyer_id, brief, request_id}` |
+| GET    | `/consultations/:id`                 | Peserta/admin                          |
+| PATCH  | `/consultations/:id/status`          | `{status}`                             |
+| GET    | `/consultations/:id/messages`        | Peserta/admin                          |
+| POST   | `/consultations/:id/messages`        | Peserta, status Ongoing `{id, body}`   |
+| POST   | `/consultations/:id/review`          | Customer pemilik, status Completed     |
+| GET    | `/lawyers/:id/reviews`               | Publik                                 |
+| GET    | `/admin/transactions`                | Admin                                  |
+| POST   | `/chatbot`                           | Publik, 20 request/menit per IP        |
+
+Chat room memakai polling 3 detik. Dashboard memuat ulang data setiap 15 detik.
+
+### 4. Mengaktifkan Gemini untuk chatbot
+
+1. Buka <https://aistudio.google.com/apikey> dan masuk dengan akun Google.
+2. Klik **Create API key**. Pilih atau buat project Google Cloud bila diminta.
+3. Salin key, lalu isi di `backend/.env` (bukan `.env.local` frontend):
+
+   ```dotenv
+   GEMINI_API_KEY=isi-key-anda
+   GEMINI_MODEL=gemini-3.5-flash-lite
+   ```
+
+4. Restart backend (`npm run dev --prefix backend`).
+
+System instruction ada di [`src/services/chatbotPrompt.ts`](src/services/chatbotPrompt.ts).
+Model default `gemini-3.5-flash-lite` dipilih lewat uji 12 kasus triase (7 dari PRD + 5 kasus
+sulit): 12/12 benar dengan median sekitar 2 detik. `gemini-3.8-flash` lebih berat dan melewati
+batas waktu 10 detik, sehingga selalu jatuh ke mode cadangan.
+
+Key hanya dipakai server Express dan tidak pernah dikirim ke browser. Jangan
+memberi awalan `NEXT_PUBLIC_` dan jangan commit `.env`. Bila key kosong, salah,
+atau kuota habis, chatbot otomatis memakai klasifikasi kata kunci dan UI
+menampilkan "Mode cadangan". Ganti `GEMINI_MODEL` bila Google merilis model baru.
+
+## Deploy ke Vercel
+
+Lihat [`docs/DEPLOY_VERCEL.md`](../docs/DEPLOY_VERCEL.md): dua project Vercel (root `backend` dan
+root repo), urutan environment variable, dan CORS.
+
+## Top up Midtrans Snap (migration 006)
+
+Panduan lengkap: [`docs/MIDTRANS_SANDBOX.md`](../docs/MIDTRANS_SANDBOX.md). Ringkasnya: jalankan
+`006_midtrans_topup.sql`, isi `MIDTRANS_SERVER_KEY` dan `MIDTRANS_CLIENT_KEY` di `backend/.env`, lalu
+restart. Tanpa key, top up memakai simulasi. Dengan key, simulasi ditolak server (403).
+
+| Method | Endpoint                                  | Akses                                   |
+| ------ | ----------------------------------------- | --------------------------------------- |
+| GET    | `/payments/config`                        | Publik: Midtrans aktif? + Client Key    |
+| POST   | `/wallet/topup/midtrans`                  | Customer `{amount}`, mengembalikan token Snap |
+| GET    | `/wallet/topup/midtrans/:orderId`         | Customer pemilik: cek & sinkron status  |
+| POST   | `/payments/midtrans/notification`         | Midtrans (signature SHA-512)            |

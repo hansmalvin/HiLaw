@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 import { Toast } from "@/components/ui/Toast";
-
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -11,287 +11,191 @@ import {
 } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import {
-  normalizePlatform,
-  syncUsers,
-  transitionConsultation,
-  appendMessage,
-  saveLawyer,
-  addReview,
-  type ManagedLawyer,
-  type PlatformStore,
-  type PlatformData,
-} from "./platform";
-import type { DemoUser } from "@/components/auth/AuthProvider";
-import type { ConsultationStatus } from "./coinLedger";
+  api,
+  type ApiConsultation,
+  type ApiLawyer,
+  type ApiProfile,
+  type ApiTransaction,
+} from "@/lib/api";
+import { toManaged, type ManagedLawyer } from "./platform";
 import {
-  applyConsultation,
-  applyTopUp,
-  initialCoinStore,
-  isCoinStore,
-  type CoinStore,
+  toConsultation,
+  toTransaction,
+  type CoinTransaction,
+  type ConsultationStatus,
+  type CustomerConsultation,
   type PaymentMethod,
 } from "./coinLedger";
 
-const KEY = "hilaw-coins-v1";
+type PublicRecord = ApiLawyer & {
+  rating: number;
+  review_count: number;
+  profiles: { full_name: string; avatar_url: string | null };
+};
+interface Wallet {
+  balance: number;
+  transactions: ApiTransaction[];
+}
+interface Data {
+  owner: string;
+  lawyers: ManagedLawyer[];
+  balance: number;
+  transactions: CoinTransaction[];
+  consultations: CustomerConsultation[];
+}
 
 interface CoinContextValue {
-  state: PlatformStore;
+  balance: number;
+  transactions: CoinTransaction[];
+  consultations: CustomerConsultation[];
+  lawyers: ManagedLawyer[];
   ready: boolean;
   error: string;
-  notice: string;
+  refresh: () => Promise<void>;
   topUp: (
     coins: number,
     method: PaymentMethod,
     requestId: string,
   ) => Promise<void>;
-  book: (lawyerId: string, brief: string, requestId: string) => Promise<string>;
+  book: (
+    lawyerId: string,
+    brief: string,
+    requestId: string,
+    minutes: number,
+  ) => Promise<string>;
   transition: (id: string, status: ConsultationStatus) => Promise<void>;
-  sendMessage: (id: string, text: string, requestId: string) => Promise<void>;
-  updateLawyer: (id: string, patch: Partial<ManagedLawyer>) => Promise<void>;
-  review: (id: string, rating: number, text: string) => Promise<void>;
-  saveSettings: (contact: string, name: string) => Promise<void>;
-  reset: () => Promise<void>;
-  dismiss: () => void;
 }
 
 const CoinContext = createContext<CoinContextValue | null>(null);
+const empty = { lawyers: [], balance: 0, transactions: [], consultations: [] };
 
-function readStore(): PlatformStore {
-  const raw = localStorage.getItem(KEY);
-  if (!raw) return normalizePlatform(initialCoinStore());
-  const parsed: unknown = JSON.parse(raw);
-  if (!isCoinStore(parsed))
-    throw new Error(
-      "Data Coins tidak valid. Gunakan Reset Demo Data untuk memulai kembali.",
+export function CoinProvider({ children }: { children: ReactNode }) {
+  const { user, ready: authReady } = useAuth();
+  const [data, setData] = useState<Data | null>(null);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const generation = useRef(0);
+  const owner = user?.id ?? "guest";
+
+  const refresh = useCallback(async () => {
+    const request = ++generation.current;
+    const [records, own, wallet, consultations] = await Promise.all([
+      api<PublicRecord[]>("/lawyers", {}, false),
+      user?.role === "LAWYER" ? api<ApiProfile>("/profile/me") : null,
+      user && user.role !== "ADMIN" ? api<Wallet>("/wallet") : null,
+      user ? api<ApiConsultation[]>("/consultations") : null,
+    ]);
+    const lawyers = records.map((l) =>
+      toManaged(l, l.profiles.full_name, l.profiles.avatar_url),
     );
+    // A lawyer always sees their own record, even before approval.
+    if (own?.lawyer_profile) {
+      const mine = toManaged(own.lawyer_profile, own.full_name, own.avatar_url);
+      const index = lawyers.findIndex((l) => l.id === mine.id);
+      if (index >= 0) lawyers[index] = mine;
+      else lawyers.push(mine);
+    }
+    if (request !== generation.current) return;
+    setData({
+      owner: user?.id ?? "guest",
+      lawyers,
+      balance: wallet?.balance ?? 0,
+      transactions: (wallet?.transactions ?? []).map(toTransaction),
+      consultations: (consultations ?? []).map(toConsultation),
+    });
+    setError("");
+  }, [user]);
 
-  return normalizePlatform(parsed);
-}
-
-export function CoinProvider({
-  children,
-  platformOverride,
-}: {
-  children: ReactNode;
-  platformOverride?: Pick<PlatformData, "users" | "lawyers">;
-}) {
-  const { user } = useAuth();
-  const [state, setState] = useState<PlatformStore>(() =>
-    normalizePlatform(initialCoinStore()),
-  );
-  const [ready, setReady] = useState(false),
-    [error, setError] = useState(""),
-    [notice, setNotice] = useState("");
-  const inFlight = useRef(false);
   useEffect(() => {
-    function restore() {
-      try {
-        setState(readStore());
-        setError("");
-      } catch {
-        setError(
-          "Data Coins tidak dapat dibaca. Aktifkan penyimpanan browser atau gunakan Reset Demo Data.",
-        );
-      }
-      setReady(true);
-    }
-    const onStorage = (event: StorageEvent) => {
-      if (event.key === KEY || event.key === null) restore();
+    if (!authReady) return;
+    let active = true;
+    const load = () => {
+      void refresh().catch((e) => {
+        if (active) setError((e as Error).message);
+      });
     };
-    restore();
-    window.addEventListener("storage", onStorage);
+    load();
+    // shortcut: 15s polling keeps lawyer queues and balances fresh; switch to Supabase Realtime when traffic grows.
+    const timer = setInterval(() => {
+      if (user && document.visibilityState === "visible") load();
+    }, 15000);
+    window.addEventListener("hilaw-profile-changed", load);
+    return () => {
+      active = false;
+      clearInterval(timer);
+      window.removeEventListener("hilaw-profile-changed", load);
+    };
+  }, [authReady, refresh, user]);
 
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
-
-  function withPlatform(current: PlatformStore): PlatformStore {
-    return platformOverride
-      ? { ...current, platform: { ...current.platform, ...platformOverride } }
-      : current;
+  async function topUp(coins: number, method: PaymentMethod, requestId: string) {
+    await api("/wallet/topup", {
+      method: "POST",
+      body: JSON.stringify({ amount: coins, method, request_id: requestId }),
+    });
+    await refresh();
+    setNotice("Top up berhasil. Saldo Poin HiLaw sudah diperbarui.");
   }
 
-  async function commit(
-    update: (current: PlatformStore) => CoinStore,
-    reset = false,
+  async function book(
+    lawyerId: string,
+    brief: string,
+    requestId: string,
+    minutes: number,
   ) {
-    if (!ready || inFlight.current)
-      throw new Error("Transaksi sedang diproses. Tunggu sebentar.");
-    inFlight.current = true;
-    const run = async () => {
-      const original = reset
-        ? normalizePlatform(initialCoinStore())
-        : readStore();
-      const next = normalizePlatform(update(withPlatform(original)));
-      // Persist the complete ledger before exposing the new balance to the UI.
-      localStorage.setItem(
-        KEY,
-        JSON.stringify(
-          platformOverride ? { ...next, platform: original.platform } : next,
-        ),
-      );
-      setState(next);
-      setError("");
-    };
-    try {
-      if (navigator.locks) await navigator.locks.request(KEY, run);
-      else await run();
-    } catch (err) {
-      throw new Error(
-        err instanceof Error
-          ? err.message
-          : "Penyimpanan gagal. Transaksi belum diproses.",
-      );
-    } finally {
-      inFlight.current = false;
-    }
-  }
-
-  function actor() {
-    if (!user) throw new Error("Silakan masuk terlebih dahulu.");
-
-    return user;
+    const { id } = await api<{ id: string }>("/consultations", {
+      method: "POST",
+      body: JSON.stringify({
+        lawyer_id: lawyerId,
+        brief,
+        request_id: requestId,
+        duration_minutes: minutes,
+      }),
+    });
+    await refresh();
+    setNotice("Pembayaran berhasil. Konsultasi menunggu konfirmasi pengacara.");
+    return id;
   }
 
   async function transition(id: string, status: ConsultationStatus) {
-    const account = actor();
-    await commit((s) =>
-      transitionConsultation(s, account, id, status, new Date().toISOString()),
-    );
+    await api("/consultations/" + id + "/status", {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+    await refresh();
     setNotice(
       status === "Cancelled"
-        ? "Permintaan ditolak. Coins sudah dikembalikan ke Customer."
+        ? "Konsultasi dibatalkan. Poin sudah dikembalikan ke Customer."
         : "Status konsultasi diperbarui: " + status + ".",
     );
   }
 
-  async function sendMessage(id: string, text: string, requestId: string) {
-    const account = actor();
-    await commit((s) =>
-      appendMessage(s, account, {
-        id: requestId,
-        consultationId: id,
-        text,
-        now: new Date().toISOString(),
-      }),
-    );
-  }
-
-  async function updateLawyer(id: string, patch: Partial<ManagedLawyer>) {
-    const account = actor();
-    await commit((s) => saveLawyer(s, account, id, patch));
-    setNotice("Profil pengacara diperbarui.");
-  }
-
-  async function review(id: string, rating: number, text: string) {
-    const account = actor();
-    await commit((s) => addReview(s, account, id, rating, text));
-    setNotice("Terima kasih. Ulasan Anda telah tersimpan.");
-  }
-
-  async function saveSettings(contact: string, name: string) {
-    if (actor().role !== "ADMIN")
-      throw new Error("Hanya Admin yang dapat mengubah pengaturan.");
-    if (
-      !/^[^ @]+@[^ @]+[.][^ @]+$/.test(contact) ||
-      !name.trim() ||
-      name.length > 50
-    )
-      throw new Error("Nama platform dan email kontak tidak valid.");
-    await commit((s) => ({
-      ...s,
-      platform: {
-        ...s.platform,
-        settings: {
-          contact,
-          platformName: name.trim(),
-        },
-      },
-    }));
-    setNotice("Pengaturan platform disimpan.");
-  }
-
-  function customer() {
-    if (!user || user.role !== "CUSTOMER")
-      throw new Error("Masuk sebagai Customer untuk melanjutkan.");
-
-    return user;
-  }
-
-  async function topUp(
-    coins: number,
-    method: PaymentMethod,
-    requestId: string,
-  ) {
-    const account = customer();
-    await commit((s) =>
-      applyTopUp(s, {
-        userId: account.id,
-        coins,
-        method,
-        requestId,
-        id: crypto.randomUUID(),
-        now: new Date().toISOString(),
-      }),
-    );
-    setNotice("Top up berhasil. Saldo HiLaw Coins sudah diperbarui.");
-  }
-
-  async function book(lawyerId: string, brief: string, requestId: string) {
-    const account = customer();
-
-    let id = "";
-    await commit((s) => {
-      const lawyer = s.platform.lawyers.find((l) => l.id === lawyerId);
-      if (!lawyer || !lawyer.active || lawyer.verification !== "Verified")
-        throw new Error("Pengacara belum aktif dan terverifikasi.");
-      const next = applyConsultation(s, {
-        userId: account.id,
-        name: account.name,
-        lawyer,
-        brief,
-        requestId,
-        id: crypto.randomUUID(),
-        now: new Date().toISOString(),
-      });
-      id =
-        next.transactions.find(
-          (t) => t.userId === account.id && t.requestId === requestId,
-        )?.consultationId || "";
-
-      return next;
-    });
-    setNotice("Pembayaran berhasil. Konsultasi menunggu konfirmasi pengacara.");
-
-    return id;
-  }
-
-  async function reset() {
-    const users = state.platform.users;
-    await commit(
-      () => syncUsers(normalizePlatform(initialCoinStore()), users),
-      true,
-    );
-    setNotice("Data operasional demo telah direset untuk semua akun.");
-  }
+  // Never show records loaded for a previous signed-in identity.
+  const current = data?.owner === owner ? data : null;
 
   return (
     <CoinContext.Provider
       value={{
-        state: withPlatform(state),
-        ready,
+        ...(current ?? empty),
+        ready: !!current,
         error,
-        notice,
+        refresh,
         topUp,
         book,
         transition,
-        sendMessage,
-        updateLawyer,
-        review,
-        saveSettings,
-        reset,
-        dismiss: () => setNotice(""),
       }}
     >
+      {error && (
+        <p className="form-error container" role="alert">
+          {error}{" "}
+          <button
+            onClick={() => {
+              void refresh().catch((e) => setError((e as Error).message));
+            }}
+          >
+            Coba lagi
+          </button>
+        </p>
+      )}
       {children}
       <Toast message={notice} onClose={() => setNotice("")} />
     </CoinContext.Provider>
@@ -306,25 +210,5 @@ export function useCoins() {
 }
 
 export function usePublicLawyers() {
-  const { state } = useCoins();
-
-  return state.platform.lawyers
-    .filter((l) => l.active && l.verification === "Verified")
-    .map((l) => {
-      const added = state.platform.reviews.filter((r) => r.lawyerId === l.id);
-      const count = l.reviews + added.length;
-
-      return {
-        ...l,
-        reviews: count,
-        rating: count
-          ? Math.round(
-              ((l.rating * l.reviews +
-                added.reduce((sum, r) => sum + r.rating, 0)) /
-                count) *
-                10,
-            ) / 10
-          : 0,
-      };
-    });
+  return useCoins().lawyers.filter((l) => l.verification === "Verified");
 }

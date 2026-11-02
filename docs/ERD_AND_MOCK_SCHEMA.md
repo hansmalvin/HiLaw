@@ -1,5 +1,9 @@
 # Simple ERD & Frontend Mock Schema — HiLaw
 
+> **Catatan (Nov 2026):** Dokumen ini adalah rancangan awal fase mock. Skema yang berlaku ada di
+> `backend/supabase/migrations/` (001–004). `src/types/hilaw.ts` dan `mockData.ts` sudah dihapus;
+> "LawToken" kini bernama **Poin HiLaw**. Lihat `PRD.md` untuk sistem Poin, chat room, dan chatbot.
+
 Sesuai kebutuhan tahap awal (**Frontend-First menggunakan Next.js** tanpa backend aktif), skema database dirancang **simpel, ringkas (6 tabel utama), dan langsung dipetakan menjadi TypeScript Interfaces & Mock State**. Desain ini sudah mencakup 3 level user (`CLIENT`, `LAWYER`, `ADMIN`), sistem **LawToken**, pembayaran **Midtrans**, dan fitur konsultasi (**Chat, Telepon, Video Call**).
 
 ---

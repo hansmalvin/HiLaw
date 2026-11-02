@@ -1,4 +1,10 @@
 # HiLaw Design System & UI/UX Blueprint
+
+> **Catatan (Nov 2026):** Atas keputusan pemilik proyek, UI **tidak** memakai palet biru di bawah. UI memakai
+> palet **warm pastel** (cokelat/krem) yang didefinisikan di `src/app/globals.css` dan diringkas di `AGENTS.md`.
+> Bagian palet di bawah hanya arsip. "LawToken" kini bernama **Poin HiLaw**.
+> Struktur rute di §3 adalah rancangan awal; rute aktual ada di `src/app/`.
+
 **Tema Visual: "Pastel Legal Trust & Halodoc Familiarity"**
 
 Dokumen ini menjadi panduan konteks visual saat membangun antarmuka **HiLaw** menggunakan **Next.js + Tailwind CSS**. Desain menggabungkan struktur navigasi **Halodoc** yang bersih, cepat, dan ramah pengguna dengan palet warna **Pastel Modern** yang memberikan rasa tenang, aman, dan berwibawa.

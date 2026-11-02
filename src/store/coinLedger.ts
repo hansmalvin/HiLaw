@@ -1,20 +1,22 @@
-﻿import type { PlatformData } from './platform';
-import type { PublicLawyer } from '@/data/publicData';
+import type {
+  ApiConsultation,
+  ApiTransaction,
+  ConsultationStatus,
+} from "@/lib/api";
 
-export type ConsultationStatus = 'Pending' | 'Confirmed' | 'Ongoing' | 'Completed' | 'Cancelled';
+// Balances and the ledger live in Supabase (migration 004); this file only shapes them for the UI.
+export type { ConsultationStatus };
 
 export interface CoinTransaction {
   id: string;
-  userId: string;
-  requestId: string;
-  type: 'TOP_UP' | 'CONSULTATION_PAYMENT' | 'REFUND';
+  type: ApiTransaction["type"];
   coins: number;
   balanceAfter: number;
-  status: 'Success';
   createdAt: string;
   description: string;
   method?: string;
   consultationId?: string;
+  userName?: string;
 }
 
 export interface CustomerConsultation {
@@ -22,6 +24,7 @@ export interface CustomerConsultation {
   customerId: string;
   customerName: string;
   lawyerId: string;
+  lawyerUserId: string | null;
   lawyerName: string;
   specialty: string;
   rate: number;
@@ -29,240 +32,87 @@ export interface CustomerConsultation {
   status: ConsultationStatus;
   brief: string;
   createdAt: string;
+  startedAt: string | null;
 }
 
-export interface CoinStore {
-  version: 1;
-  platform?: PlatformData;
-  balances: Record<string, number>;
-  transactions: CoinTransaction[];
-  consultations: CustomerConsultation[];
-}
+export const toTransaction = (
+  t: ApiTransaction & { user_name?: string },
+): CoinTransaction => ({
+  id: t.id,
+  type: t.type,
+  coins: t.amount,
+  balanceAfter: t.balance_after,
+  createdAt: t.created_at,
+  description: t.description,
+  method: t.method ?? undefined,
+  consultationId: t.consultation_id ?? undefined,
+  userName: t.user_name,
+});
+
+export const toConsultation = (c: ApiConsultation): CustomerConsultation => ({
+  id: c.id,
+  customerId: c.customer_id,
+  customerName: c.customer_name,
+  lawyerId: c.lawyer_id,
+  lawyerUserId: c.lawyer_user_id,
+  lawyerName: c.lawyer_name,
+  specialty: c.specialization,
+  rate: c.rate,
+  duration: c.duration_minutes,
+  status: c.status,
+  brief: c.brief,
+  createdAt: c.created_at,
+  startedAt: c.started_at,
+});
 
 export const COIN_PACKAGES = [50, 100, 250, 500] as const;
 
-export const PAYMENT_METHODS = [
-  'QRIS',
-  'BCA Virtual Account',
-  'Mandiri Virtual Account',
-  'GoPay',
-  'ShopeePay',
-  'Kartu Kredit'
+// Chat session packages; a lawyer's rate is the price of the 30-minute package.
+export const SESSION_PACKAGES = [
+  { minutes: 15, name: "Kilat", note: "Pertanyaan singkat" },
+  { minutes: 30, name: "Standar", note: "Konsultasi lengkap" },
+  { minutes: 60, name: "Mendalam", note: "Kasus kompleks · hemat hingga 10%" },
 ] as const;
 
-export type PaymentMethod = typeof PAYMENT_METHODS[number];
+// Same rule as package_price() in migration 005. Integer math on purpose: 5 * 0.6 is 3.0000000000000004.
+export const packagePrice = (rate: number, minutes: number) =>
+  minutes === 15
+    ? Math.ceil((rate * 6) / 10)
+    : minutes === 60
+      ? Math.ceil((rate * 18) / 10)
+      : rate;
 
-export const transactionLabel = {
-  TOP_UP: 'Top Up Coins',
-  CONSULTATION_PAYMENT: 'Pembayaran Konsultasi',
-  REFUND: 'Refund Coins'
+export const PAYMENT_METHODS = [
+  "QRIS",
+  "BCA Virtual Account",
+  "Mandiri Virtual Account",
+  "GoPay",
+  "ShopeePay",
+  "Kartu Kredit",
+] as const;
+
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
+export const transactionLabel: Record<CoinTransaction["type"], string> = {
+  TOP_UP: "Top Up Poin",
+  CONSULTATION_PAYMENT: "Pembayaran Konsultasi",
+  REFUND: "Refund Poin",
+  EARNING: "Pendapatan Konsultasi",
 };
 
-export const rupiah = (coins: number) => 'Rp' + (coins * 1000).toLocaleString('id-ID');
+export const rupiah = (points: number) =>
+  "Rp" + (points * 1000).toLocaleString("id-ID");
 
-export function initialCoinStore(): CoinStore {
-  return {
-    version: 1,
-    balances: {
-      'demo-customer': 120
-    },
-    transactions: [
-      {
-        id: 'seed-payment',
-        requestId: 'seed-payment',
-        userId: 'demo-customer',
-        type: 'CONSULTATION_PAYMENT',
-        coins: -50,
-        balanceAfter: 120,
-        status: 'Success',
-        createdAt: '2026-10-28T03:00:00.000Z',
-        description: 'Konsultasi bersama Nadira Putri',
-        consultationId: 'seed-consultation'
-      },
-      {
-        id: 'seed-topup',
-        requestId: 'seed-topup',
-        userId: 'demo-customer',
-        type: 'TOP_UP',
-        coins: 170,
-        balanceAfter: 170,
-        status: 'Success',
-        createdAt: '2026-10-27T03:00:00.000Z',
-        description: 'Saldo awal demonstrasi',
-        method: 'Saldo demo'
-      },
-    ],
-    consultations: [
-      {
-        id: 'seed-consultation',
-        customerId: 'demo-customer',
-        customerName: 'Aulia Rahma',
-        lawyerId: 'nadira',
-        lawyerName: 'Nadira Putri, S.H., M.H.',
-        specialty: 'Hukum Keluarga',
-        rate: 50,
-        duration: 30,
-        status: 'Completed',
-        brief: 'Memahami dokumen awal untuk konsultasi keluarga. Data contoh demonstrasi.',
-        createdAt: '2026-10-28T03:00:00.000Z'
-      }
-    ],
-  };
-}
+// Same rule as transition_consultation(): HiLaw keeps floor(20%) of each completed session.
+export function earnings(
+  consultations: CustomerConsultation[],
+  lawyerId?: string,
+) {
+  const completed = consultations.filter(
+    (c) => c.status === "Completed" && (!lawyerId || c.lawyerId === lawyerId),
+  );
+  const gross = completed.reduce((sum, c) => sum + c.rate, 0);
+  const platform = completed.reduce((sum, c) => sum + Math.floor(c.rate / 5), 0);
 
-export function isCoinStore(value: unknown): value is CoinStore {
-  if (!value || typeof value !== 'object')
-    return false;
-  const s = value as CoinStore;
-
-  return s.version === 1 && !!s.balances && typeof s.balances === 'object'
-    && !Array.isArray(s.balances)
-    && Object.values(s.balances).every(n => Number.isSafeInteger(n) && n >= 0)
-    && Array.isArray(s.transactions)
-    && s.transactions.every(
-      t => t && typeof t.id === 'string' && typeof t.requestId === 'string'
-        && typeof t.userId === 'string'
-        && ['TOP_UP', 'CONSULTATION_PAYMENT', 'REFUND'].includes(t.type)
-        && Number.isSafeInteger(t.coins)
-        && Number.isSafeInteger(t.balanceAfter)
-        && t.balanceAfter >= 0
-        && t.status === 'Success'
-        && typeof t.description === 'string'
-        && Number.isFinite(Date.parse(t.createdAt))
-    )
-    && Array.isArray(s.consultations)
-    && s.consultations.every(
-      c => c && typeof c.id === 'string' && typeof c.customerId === 'string'
-        && typeof c.customerName === 'string'
-        && typeof c.lawyerId === 'string'
-        && typeof c.lawyerName === 'string'
-        && typeof c.specialty === 'string'
-        && Number.isSafeInteger(c.rate)
-        && c.rate > 0
-        && Number.isSafeInteger(c.duration)
-        && c.duration > 0
-        && typeof c.brief === 'string'
-        && ['Pending', 'Confirmed', 'Ongoing', 'Completed', 'Cancelled'].includes(c.status)
-        && Number.isFinite(Date.parse(c.createdAt))
-    );
-}
-
-function validateRequest(userId: string, requestId: string) {
-  if (!userId || !requestId)
-    throw new Error('Identitas transaksi tidak valid.');
-}
-
-export function applyTopUp(
-  store: CoinStore,
-  input: {
-    userId: string;
-    coins: number;
-    method: PaymentMethod;
-    requestId: string;
-    id: string;
-    now: string
-  }
-): CoinStore {
-  validateRequest(input.userId, input.requestId);
-  if (store.transactions.some(t => t.requestId === input.requestId))
-    return store;
-  if (!(COIN_PACKAGES as readonly number[]).includes(input.coins)
-    || !(PAYMENT_METHODS as readonly string[]).includes(input.method))
-    throw new Error('Paket atau metode pembayaran tidak valid.');
-  const balance = (store.balances[input.userId] ?? 0) + input.coins;
-  if (!Number.isSafeInteger(balance))
-    throw new Error('Saldo melebihi batas simulasi.');
-
-  return {
-    ...store,
-    balances: {
-      ...store.balances,
-      [input.userId]: balance
-    },
-    transactions: [
-      {
-        id: input.id,
-        requestId: input.requestId,
-        userId: input.userId,
-        type: 'TOP_UP',
-        coins: input.coins,
-        balanceAfter: balance,
-        status: 'Success',
-        createdAt: input.now,
-        description: 'Top Up ' + input.coins + ' HiLaw Coins',
-        method: input.method
-      },
-      ...store.transactions
-    ]
-  };
-}
-
-export function applyConsultation(
-  store: CoinStore,
-  input: {
-    userId: string;
-    name: string;
-    lawyer: PublicLawyer;
-    brief: string;
-    requestId: string;
-    id: string;
-    now: string
-  }
-): CoinStore {
-  validateRequest(input.userId, input.requestId);
-  if (store.transactions.some(t => t.requestId === input.requestId))
-    return store;
-  if (!input.lawyer.online)
-    throw new Error('Pengacara belum tersedia. Silakan pilih pengacara lain.');
-  if (input.brief.trim().length < 10 || input.brief.length > 1500)
-    throw new Error('Ceritakan masalah Anda dalam 10–1.500 karakter.');
-  if (!Number.isSafeInteger(input.lawyer.rate) || input.lawyer.rate <= 0)
-    throw new Error('Tarif konsultasi tidak valid.');
-  const balance = store.balances[input.userId] ?? 0;
-  if (balance < input.lawyer.rate)
-    throw new Error('Saldo Coins tidak mencukupi. Silakan top up terlebih dahulu.');
-  // Repeated clicks and a second checkout cannot create another live request for the same lawyer.
-  if (store.consultations.some(
-    c => c.customerId === input.userId && c.lawyerId === input.lawyer.id
-      && !['Completed', 'Cancelled'].includes(c.status)
-  ))
-    throw new Error('Anda sudah memiliki konsultasi aktif atau menunggu dengan pengacara ini.');
-  const remaining = balance - input.lawyer.rate;
-  const consultation: CustomerConsultation = {
-    id: input.id,
-    customerId: input.userId,
-    customerName: input.name,
-    lawyerId: input.lawyer.id,
-    lawyerName: input.lawyer.name,
-    specialty: input.lawyer.specialty,
-    rate: input.lawyer.rate,
-    duration: 30,
-    status: 'Pending',
-    brief: input.brief.trim(),
-    createdAt: input.now
-  };
-
-  return {
-    ...store,
-    balances: {
-      ...store.balances,
-      [input.userId]: remaining
-    },
-    consultations: [consultation, ...store.consultations],
-    transactions: [
-      {
-        id: 'tx-' + input.id,
-        requestId: input.requestId,
-        userId: input.userId,
-        type: 'CONSULTATION_PAYMENT',
-        coins: -input.lawyer.rate,
-        balanceAfter: remaining,
-        status: 'Success',
-        createdAt: input.now,
-        description: 'Konsultasi bersama ' + input.lawyer.name,
-        consultationId: input.id
-      },
-      ...store.transactions
-    ]
-  };
+  return { completed, gross, platform, lawyer: gross - platform };
 }

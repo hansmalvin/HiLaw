@@ -10,6 +10,8 @@ export interface ApiLawyer {
   kta_number: string | null;
   bio: string | null;
   verification_status: "not_submitted" | "pending" | "approved" | "rejected";
+  rate_points?: number;
+  is_online?: boolean;
 }
 export interface ApiProfile {
   id: string;
@@ -33,6 +35,38 @@ export interface Verification {
   rejection_reason: string | null;
   submitted_at: string;
   reviewed_at: string | null;
+}
+export type ConsultationStatus =
+  | "Pending"
+  | "Confirmed"
+  | "Ongoing"
+  | "Completed"
+  | "Cancelled";
+export interface ApiConsultation {
+  id: string;
+  customer_id: string;
+  customer_name: string;
+  lawyer_id: string;
+  lawyer_user_id: string | null;
+  lawyer_name: string;
+  specialization: string;
+  rate: number;
+  duration_minutes: number;
+  status: ConsultationStatus;
+  brief: string;
+  started_at: string | null;
+  ended_at: string | null;
+  created_at: string;
+}
+export interface ApiTransaction {
+  id: string;
+  type: "TOP_UP" | "CONSULTATION_PAYMENT" | "REFUND" | "EARNING";
+  amount: number;
+  balance_after: number;
+  description: string;
+  method: string | null;
+  consultation_id: string | null;
+  created_at: string;
 }
 interface Session {
   access_token: string;

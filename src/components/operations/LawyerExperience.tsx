@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { BackendProfile } from "@/components/auth/BackendProfile";
 import Link from "next/link";
@@ -8,8 +8,8 @@ import { useCoins } from "@/store/CoinProvider";
 import { Modal } from "@/components/ui/Modal";
 import { LawyerVerification } from "./LawyerVerification";
 import { Status, localDate } from "@/components/customer/CustomerExperience";
-import { earnings, ownedLawyer } from "@/store/platform";
 import {
+  earnings,
   rupiah,
   type ConsultationStatus,
   type CustomerConsultation,
@@ -86,7 +86,7 @@ export function SessionTable({
                 <th>Tanggal (WIB)</th>
                 <th>Customer / Pengacara</th>
                 <th>Status</th>
-                <th>Coins</th>
+                <th>Poin</th>
                 <th>Aksi</th>
               </tr>
             </thead>
@@ -194,13 +194,13 @@ export function SessionTable({
           <Status status={selected.status} />
           <h3 className="modal-lawyer">{selected.customerName}</h3>
           <p>
-            {selected.lawyerName} · {selected.rate} Coins
+            {selected.lawyerName} · {selected.rate} Poin
           </p>
           <p className="payment-info">{selected.brief}</p>
           {action === "Cancelled" && (
             <p>
-              {selected.rate} Coins akan dikembalikan satu kali ke saldo
-              Customer. Pendapatan tidak dihitung untuk sesi yang dibatalkan.
+              {selected.rate} Poin dikembalikan satu kali ke saldo Customer.
+              Pendapatan tidak dihitung untuk sesi yang dibatalkan.
             </p>
           )}
           {action === "Confirmed" && (
@@ -247,19 +247,12 @@ export function SessionTable({
 
 export function LawyerExperience({ section }: { section: string }) {
   const { user } = useAuth();
-  const { state, ready, error } = useCoins();
-  if (!ready) return <p role="status">Memuat ruang kerja…</p>;
-  if (error)
-    return (
-      <p className="form-error" role="alert">
-        {error}
-      </p>
-    );
-  if (!user) return null;
-  const profile = ownedLawyer(state, user);
+  const { consultations: sessions, lawyers, balance, ready, error } =
+    useCoins();
+  if (!ready) return error ? null : <p role="status">Memuat ruang kerja…</p>;
+  const profile = lawyers.find((l) => l.userId === user?.id);
   if (!profile) return <p role="status">Menyiapkan profil pengacara…</p>;
-  const sessions = state.consultations.filter((c) => c.lawyerId === profile.id),
-    income = earnings(state, profile.id);
+  const income = earnings(sessions, profile.id);
 
   return (
     <>
@@ -274,9 +267,6 @@ export function LawyerExperience({ section }: { section: string }) {
                   ? "Verifikasi ditolak"
                   : "Belum diajukan"}
           </span>
-          <span className="tag">
-            {profile.active ? "Akun aktif" : "Dinonaktifkan"}
-          </span>
           <span className="tag">{profile.online ? "Tersedia" : "Offline"}</span>
         </div>
       </div>
@@ -289,16 +279,17 @@ export function LawyerExperience({ section }: { section: string }) {
         <>
           <MetricCards
             items={[
+              ["Saldo Poin Anda", balance.toLocaleString("id-ID") + " Poin"],
               ["Nilai konsultasi selesai", rupiah(income.gross)],
               ["Penghasilan pengacara (80%)", rupiah(income.lawyer)],
               ["Komisi HiLaw (20%)", rupiah(income.platform)],
             ]}
           />
           <section className="dashboard-panel">
-            <h2>Rincian pendapatan simulasi</h2>
+            <h2>Rincian pendapatan</h2>
             <p className="panel-intro">
-              Pendapatan diakui setelah konsultasi Completed. Sesi Pending,
-              Confirmed, Ongoing, atau Cancelled tidak masuk perhitungan.
+              80% tarif masuk ke saldo Poin Anda saat konsultasi Completed.
+              Sesi Pending, Confirmed, Ongoing, atau Cancelled tidak dihitung.
             </p>
             <SessionTable sessions={income.completed} />
           </section>
@@ -326,7 +317,7 @@ export function LawyerExperience({ section }: { section: string }) {
               <div className="dashboard-welcome">
                 <div>
                   <h2>{rupiah(income.lawyer)}</h2>
-                  <p>Penghasilan simulasi Anda · 80% dari sesi selesai.</p>
+                  <p>Penghasilan Anda · 80% dari sesi selesai.</p>
                 </div>
                 <Link className="button outline" href="/lawyer/earnings">
                   Lihat pendapatan

@@ -1,11 +1,12 @@
-﻿"use client";
-import { Toast } from "@/components/ui/Toast";
-
+"use client";
 import Link from "next/link";
 import { useCoins, usePublicLawyers } from "@/store/CoinProvider";
 import { ConsultationBooking } from "@/components/customer/ConsultationBooking";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
+import type { ManagedLawyer } from "@/store/platform";
+import { packagePrice, SESSION_PACKAGES } from "@/store/coinLedger";
 import { useSearchParams } from "next/navigation";
 import {
   ArrowRight,
@@ -26,9 +27,7 @@ import {
   Coins,
   Search,
   SlidersHorizontal,
-  Send,
   Plus,
-  Bot,
   Clock,
   ChevronRight,
   CircleCheck,
@@ -50,7 +49,7 @@ const icons = [
   MessageCircle,
 ];
 
-const categoryUrl = (category: string) =>
+export const categoryUrl = (category: string) =>
   "/lawyers?category=" + encodeURIComponent(category);
 
 export function Portrait({ lawyer }: { lawyer: PublicLawyer }) {
@@ -58,7 +57,7 @@ export function Portrait({ lawyer }: { lawyer: PublicLawyer }) {
 
   return (
     <div className="portrait">
-      {failed || (!lawyer.photo && !lawyer.avatarUrl) ? (
+      {failed || !lawyer.avatarUrl ? (
         <span>
           {lawyer.name
             .split(" ")
@@ -67,11 +66,11 @@ export function Portrait({ lawyer }: { lawyer: PublicLawyer }) {
             .join("")}
         </span>
       ) : (
-        /* eslint-disable-next-line @next/next/no-img-element */ <img
-          src={
-            lawyer.avatarUrl || "https://i.pravatar.cc/240?img=" + lawyer.photo
-          }
-          alt={"Foto ilustrasi " + lawyer.name}
+        // Remote avatar URLs come from Supabase Storage; next/image would need remotePatterns config.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={lawyer.avatarUrl}
+          alt={"Foto " + lawyer.name}
           onError={() => setFailed(true)}
         />
       )}
@@ -79,7 +78,7 @@ export function Portrait({ lawyer }: { lawyer: PublicLawyer }) {
   );
 }
 
-export function LawyerCard({ lawyer: l }: { lawyer: PublicLawyer }) {
+export function LawyerCard({ lawyer: l }: { lawyer: ManagedLawyer }) {
   return (
     <article className="lawyer-card">
       <div className="lawyer-top">
@@ -95,16 +94,15 @@ export function LawyerCard({ lawyer: l }: { lawyer: PublicLawyer }) {
         <BriefcaseBusiness size={14} />
         {l.experience} tahun pengalaman <span>·</span>
         <Star size={14} />
-        {l.rating}
+        {l.reviews ? l.rating : "Baru"}
       </p>
       <p className="verified">
-        <ShieldCheck size={14} /> Terverifikasi{" "}
-        <span className="muted">(demo)</span>
+        <ShieldCheck size={14} /> Terverifikasi {l.organization}
       </p>
       <div className="card-price">
         <div>
           <strong>
-            {l.rate} <small>Coins</small>
+            {l.rate} <small>Poin</small>
           </strong>
           <span>/ 30 menit</span>
         </div>
@@ -297,10 +295,12 @@ export function Landing() {
               <LawyerCard key={l.id} lawyer={l} />
             ))}
           </div>
-          <p className="demo-note">
-            Profil dan verifikasi bersifat simulasi. Rating menggabungkan data
-            awal dan ulasan demo. Foto hanya ilustrasi.
-          </p>
+          {!lawyers.length && (
+            <p className="demo-note">
+              Belum ada pengacara terverifikasi. Pengacara tampil di sini
+              setelah lolos verifikasi Admin.
+            </p>
+          )}
         </div>
       </section>
       <section className="container section">
@@ -320,8 +320,8 @@ export function Landing() {
               "Pilih spesialis yang sesuai dengan kebutuhan dan anggaran.",
             ],
             [
-              "Top Up HiLaw Coins",
-              "Siapkan saldo dengan biaya yang jelas. 1 Coin = Rp1.000.",
+              "Top Up Poin HiLaw",
+              "Siapkan saldo dengan biaya yang jelas. 1 Poin = Rp1.000.",
             ],
             [
               "Mulai konsultasi",
@@ -383,15 +383,15 @@ export function Landing() {
             ],
             [
               "Bagaimana cara menggunakan chatbot?",
-              "Buka Chatbot, ketik gambaran masalah Anda, atau pilih pertanyaan yang disarankan. Assistant memberikan respons simulasi dan tautan kategori yang relevan.",
+              "Buka Chatbot dan ceritakan masalah Anda. HiLaw Assistant (Gemini AI) mengenali bidang hukumnya dan merekomendasikan pengacara terverifikasi yang sesuai.",
             ],
             [
-              "Bagaimana cara membeli HiLaw Coins?",
-              "Masuk sebagai Customer, buka HiLaw Coins, pilih paket dan metode pembayaran simulasi, lalu konfirmasi. Nilai demonstrasi 1 Coin = Rp1.000. Tidak ada pembayaran asli.",
+              "Bagaimana cara membeli Poin HiLaw?",
+              "Masuk sebagai Customer, buka Poin HiLaw, pilih paket dan metode pembayaran simulasi, lalu konfirmasi. 1 Poin = Rp1.000. Tidak ada pembayaran asli pada tahap ini.",
             ],
             [
               "Bagaimana cara melakukan konsultasi?",
-              "Pilih pengacara dan buka profilnya. Masuk sebagai Customer, pilih pengacara yang tersedia, lalu konfirmasi pembayaran Coins pada profilnya. Permintaan akan menunggu konfirmasi pengacara.",
+              "Pilih pengacara dan buka profilnya. Masuk sebagai Customer, lalu bayar dengan Poin. Setelah pengacara menerima dan memulai sesi, ruang chat terbuka untuk Anda berdua.",
             ],
             [
               "Di mana saya melihat riwayat konsultasi?",
@@ -413,15 +413,13 @@ export function Landing() {
 }
 
 export function Footer() {
-  const { state } = useCoins();
-
   return (
     <footer className="footer">
       <div className="container footer-grid">
         <div>
           <Link href="/" className="brand">
             <Scale size={28} />
-            {state.platform.settings.platformName}.
+            HiLaw.
           </Link>
           <p>
             Langkah pertama untuk
@@ -437,9 +435,8 @@ export function Footer() {
         </div>
         <div>
           <strong>Hubungi kami</strong>
-          <span>{state.platform.settings.contact}</span>
+          <span>halo@hilaw.example</span>
           <span>Jakarta, Indonesia</span>
-          <small>Kontak placeholder</small>
         </div>
         <div className="footer-note">
           <ShieldCheck size={25} />
@@ -448,7 +445,7 @@ export function Footer() {
             <br />
             Teman untuk melangkah.
           </p>
-          <small>Prototipe frontend · Phase 6</small>
+          <small>Prototipe tugas kuliah</small>
         </div>
       </div>
       <div className="container footer-bottom">
@@ -564,7 +561,7 @@ export function Directory() {
             </select>
           </label>
           <fieldset className="price-range-filter">
-            <legend>Rentang tarif (Coins)</legend>
+            <legend>Rentang tarif (Poin)</legend>
             <div className="price-range-values">
               <label>
                 Dari
@@ -607,7 +604,7 @@ export function Directory() {
               </div>
               <input
                 type="range"
-                aria-label="Tarif minimum dalam Coins"
+                aria-label="Tarif minimum dalam Poin"
                 min={0}
                 max={priceCeiling}
                 step={1}
@@ -619,7 +616,7 @@ export function Directory() {
               />
               <input
                 type="range"
-                aria-label="Tarif maksimum dalam Coins"
+                aria-label="Tarif maksimum dalam Poin"
                 min={0}
                 max={priceCeiling}
                 step={1}
@@ -631,7 +628,7 @@ export function Directory() {
             </div>
             <p>
               {priceMin.toLocaleString("id-ID")} -{" "}
-              {selectedMax.toLocaleString("id-ID")} Coins / 30 menit
+              {selectedMax.toLocaleString("id-ID")} Poin / 30 menit
             </p>
           </fieldset>
           <label>
@@ -706,19 +703,30 @@ export function Directory() {
               </button>
             </div>
           )}
-          <p className="demo-note">
-            Profil dan verifikasi bersifat fiktif untuk demo. Foto hanya
-            ilustrasi.
-          </p>
         </div>
       </div>
     </>
   );
 }
 
-export function LawyerDetail({ lawyer: l }: { lawyer: PublicLawyer }) {
-  const { state } = useCoins();
-  const reviews = state.platform.reviews.filter((r) => r.lawyerId === l.id);
+interface Review {
+  id: string;
+  name: string;
+  rating: number;
+  body: string | null;
+}
+
+export function LawyerDetail({ lawyer: l }: { lawyer: ManagedLawyer }) {
+  const [reviews, setReviews] = useState<Review[] | null>(null);
+  useEffect(() => {
+    let active = true;
+    api<Review[]>("/lawyers/" + l.id + "/reviews", {}, false)
+      .then((items) => active && setReviews(items))
+      .catch(() => active && setReviews([]));
+    return () => {
+      active = false;
+    };
+  }, [l.id]);
 
   return (
     <div className="container section">
@@ -736,22 +744,18 @@ export function LawyerDetail({ lawyer: l }: { lawyer: PublicLawyer }) {
               <h1>{l.name}</h1>
               <p className="verified">
                 <ShieldCheck size={17} />
-                Terverifikasi · Data demonstrasi
+                Terverifikasi {l.organization}
               </p>
               <p className="meta">
                 <BriefcaseBusiness size={16} />
                 {l.experience} tahun pengalaman <Star size={16} />
-                {l.rating} ({l.reviews} ulasan demo)
+                {l.reviews ? `${l.rating} (${l.reviews} ulasan)` : "Belum ada ulasan"}
               </p>
             </div>
           </article>
           <section className="detail-section">
             <h2>Mengenal pengacara</h2>
             <p>{l.bio}</p>
-            <p>
-              Seluruh profil merupakan identitas fiktif untuk demonstrasi
-              layanan HiLaw.
-            </p>
           </section>
           <section className="detail-section">
             <h2>Bidang pendampingan</h2>
@@ -763,32 +767,24 @@ export function LawyerDetail({ lawyer: l }: { lawyer: PublicLawyer }) {
           </section>
           <section className="detail-section">
             <h2>Ulasan konsultasi</h2>
-            {reviews.map((r) => (
-              <div className="review" key={r.id}>
-                <strong>{r.name} · Customer demo</strong>
-                <span>{r.rating}/5</span>
-                <p>{r.text}</p>
-              </div>
-            ))}
-            <p className="rating-large">
-              <Star /> {l.rating} <small>/ 5 · {l.reviews} ulasan demo</small>
-            </p>
-            {[
-              [
-                "Aulia · Customer demo",
-                "Penjelasannya mudah dipahami dan membantu saya menyusun pertanyaan selanjutnya.",
-              ],
-              [
-                "Dimas · Customer demo",
-                "Pendekatannya ramah dan pembahasannya terstruktur.",
-              ],
-            ].map(([name, text]) => (
-              <div className="review" key={name}>
-                <strong>{name}</strong>
-                <span>★★★★★</span>
-                <p>{text}</p>
-              </div>
-            ))}
+            {!!l.reviews && (
+              <p className="rating-large">
+                <Star /> {l.rating} <small>/ 5 · {l.reviews} ulasan</small>
+              </p>
+            )}
+            {reviews === null ? (
+              <p role="status">Memuat ulasan…</p>
+            ) : reviews.length ? (
+              reviews.map((r) => (
+                <div className="review" key={r.id}>
+                  <strong>{r.name}</strong>
+                  <span>{"★".repeat(r.rating)}</span>
+                  {r.body && <p>{r.body}</p>}
+                </div>
+              ))
+            ) : (
+              <p>Belum ada ulasan. Ulasan muncul setelah konsultasi selesai.</p>
+            )}
           </section>
         </div>
         <aside className="booking-card" id="consult">
@@ -799,312 +795,27 @@ export function LawyerDetail({ lawyer: l }: { lawyer: PublicLawyer }) {
             {l.online ? "Tersedia untuk konsultasi" : "Konsultasi terjadwal"}
           </span>
           <div className="booking-price">
-            {l.rate} <span>HiLaw Coins</span>
+            {l.rate} <span>Poin HiLaw</span>
           </div>
-          <p>Rp{(l.rate * 1000).toLocaleString("id-ID")} / sesi</p>
+          <p>Rp{(l.rate * 1000).toLocaleString("id-ID")} / 30 menit</p>
           <hr />
           <p className="meta">
             <MessageCircle size={18} />
-            Konsultasi chat
+            Konsultasi chat · sesi berakhir otomatis
           </p>
+          {SESSION_PACKAGES.map((p) => (
+            <p className="meta package-line" key={p.minutes}>
+              <Clock size={18} />
+              {p.name} {p.minutes} menit
+              <strong>{packagePrice(l.rate, p.minutes)} Poin</strong>
+            </p>
+          ))}
           <p className="meta">
-            <Clock size={18} />
-            Durasi 30 menit
-          </p>
-          <p className="meta">
-            <Coins size={18} />1 Coin = Rp1.000
+            <Coins size={18} />1 Poin = Rp1.000
           </p>
           <ConsultationBooking lawyer={l} />
         </aside>
       </div>
-    </div>
-  );
-}
-
-type ChatMessage = {
-  id: string;
-  role: "assistant" | "user";
-  text: string;
-  category?: PublicCategory;
-};
-
-const welcome: ChatMessage = {
-  id: "welcome",
-  role: "assistant",
-  text: "Halo, saya HiLaw Assistant. Ceritakan singkat persoalan Anda. Saya akan membantu mengenali bidang hukum yang mungkin relevan.",
-};
-
-function answer(text: string): Omit<ChatMessage, "id" | "role"> {
-  const s = text.toLowerCase();
-  const rules: [RegExp, PublicCategory, string][] = [
-    [
-      /cerai|nikah|asuh|keluarga/,
-      "Hukum Keluarga",
-      "Persoalan ini mungkin berkaitan dengan hukum keluarga. Siapkan kronologi dan dokumen terkait agar pengacara dapat memahami kondisi Anda.",
-    ],
-    [
-      /waris|peninggalan/,
-      "Hukum Waris",
-      "Persoalan ini mungkin berkaitan dengan hukum waris. Catat hubungan keluarga dan dokumen harta yang tersedia untuk dibahas bersama pengacara.",
-    ],
-    [
-      /phk|gaji|kerja|upah/,
-      "Hukum Ketenagakerjaan",
-      "Persoalan ini mungkin berkaitan dengan ketenagakerjaan. Siapkan kontrak kerja, bukti pembayaran, dan komunikasi terkait.",
-    ],
-    [
-      /tanah|rumah|properti|sertifikat/,
-      "Hukum Properti",
-      "Persoalan ini mungkin berkaitan dengan hukum properti. Kumpulkan dokumen kepemilikan dan kronologi kejadian.",
-    ],
-    [
-      /pidana|curi|tipu|polisi|kekerasan/,
-      "Hukum Pidana",
-      "Persoalan ini mungkin berkaitan dengan hukum pidana. Catat kronologi dan simpan bukti yang tersedia untuk dibahas bersama pengacara.",
-    ],
-    [
-      /bisnis|usaha|perusahaan|kemitraan/,
-      "Hukum Bisnis",
-      "Persoalan ini mungkin berkaitan dengan hukum bisnis. Siapkan perjanjian dan komunikasi para pihak untuk konsultasi.",
-    ],
-    [
-      /utang|hutang|piutang|perdata|kontrak/,
-      "Hukum Perdata",
-      "Persoalan ini mungkin berkaitan dengan hukum perdata. Siapkan perjanjian, bukti pembayaran, dan komunikasi terkait.",
-    ],
-  ];
-  const rule = rules.find(([regex]) => regex.test(s));
-
-  return rule
-    ? {
-        text:
-          rule[2] +
-          " Penilaian lebih lanjut memerlukan pembahasan dengan profesional.",
-        category: rule[1],
-      }
-    : {
-        text: "Terima kasih sudah bercerita. Bisa jelaskan kejadian utama dan pihak yang terlibat? Jika belum yakin bidangnya, pengacara konsultasi umum dapat membantu memetakan persoalan Anda.",
-        category: "Konsultasi Umum",
-      };
-}
-
-export function Chatbot() {
-  const [messages, setMessages] = useState<ChatMessage[]>([welcome]);
-  const [input, setInput] = useState("");
-  const [typing, setTyping] = useState(false);
-  const [ready, setReady] = useState(false);
-  const [notice, setNotice] = useState("");
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const bottom = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    try {
-      const saved = JSON.parse(
-        localStorage.getItem("hilaw-public-chat-v1") || "null",
-      );
-      if (
-        Array.isArray(saved) &&
-        saved.length &&
-        saved.every(
-          (m) =>
-            typeof m.id === "string" &&
-            ["user", "assistant"].includes(m.role) &&
-            typeof m.text === "string" &&
-            (!m.category || categories.includes(m.category)),
-        )
-      )
-        setMessages(saved);
-    } catch {
-      setNotice("Riwayat tidak dapat dimuat. Percakapan baru siap digunakan.");
-    }
-    setReady(true);
-
-    return () => {
-      if (timer.current) clearTimeout(timer.current);
-    };
-  }, []);
-  useEffect(() => {
-    if (ready)
-      try {
-        localStorage.setItem("hilaw-public-chat-v1", JSON.stringify(messages));
-      } catch {
-        setNotice(
-          "Penyimpanan browser tidak tersedia. Chat tetap dapat digunakan selama halaman terbuka.",
-        );
-      }
-  }, [messages, ready]);
-  useEffect(() => {
-    bottom.current?.scrollIntoView({
-      block: "nearest",
-      behavior: "smooth",
-    });
-  }, [messages, typing]);
-
-  function send(text: string) {
-    const value = text.trim();
-    if (!value || typing || !ready) return;
-    setMessages((m) => [
-      ...m,
-      {
-        id: crypto.randomUUID(),
-        role: "user",
-        text: value,
-      },
-    ]);
-    setInput("");
-    setTyping(true);
-    timer.current = setTimeout(() => {
-      setMessages((m) => [
-        ...m,
-        {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          ...answer(value),
-        },
-      ]);
-      setTyping(false);
-    }, 650);
-  }
-
-  function reset() {
-    if (timer.current) clearTimeout(timer.current);
-    setTyping(false);
-    setMessages([welcome]);
-    setInput("");
-    setNotice("Percakapan baru siap dimulai.");
-  }
-
-  return (
-    <div className="container section chatbot-page">
-      <div className="section-heading">
-        <div>
-          <span className="eyebrow">LANGKAH PERTAMA, CERITAKAN SAJA</span>
-          <h1>Mari pahami persoalan Anda.</h1>
-          <p>Temukan arah awal bersama HiLaw Assistant.</p>
-        </div>
-      </div>
-      <div className="chat-layout">
-        <aside className="chat-sidebar">
-          <span className="icon-box">
-            <Sparkles size={28} />
-          </span>
-          <h2>
-            Tak perlu memahami
-            <br />
-            semuanya sendiri.
-          </h2>
-          <p>
-            Ceritakan dengan bahasa Anda. Kami bantu kenali bidang hukum yang
-            relevan.
-          </p>
-          <button className="button outline" onClick={reset} disabled={!ready}>
-            <Plus size={17} />
-            New Chat
-          </button>
-          <div className="chat-side-note">
-            <ShieldCheck size={21} />
-            <p>
-              Hindari membagikan NIK, nomor rekening, atau dokumen pribadi dalam
-              percakapan demo.
-            </p>
-          </div>
-        </aside>
-        <div className="chat-panel">
-          <header>
-            <span className="assistant-avatar">
-              <Bot size={23} />
-            </span>
-            <div>
-              <strong>HiLaw Assistant</strong>
-              <small>Asisten panduan awal · Simulasi</small>
-            </div>
-            <span className="assistant-status">Siap membantu</span>
-          </header>
-          <div
-            className="chat-messages"
-            role="log"
-            aria-label="Percakapan HiLaw Assistant"
-            aria-live="polite"
-          >
-            {!ready ? (
-              <p role="status">Memuat percakapan…</p>
-            ) : (
-              messages.map((m) => (
-                <div className={"message " + m.role} key={m.id}>
-                  {m.role === "assistant" && <Bot size={19} />}
-                  <div>
-                    <p>{m.text}</p>
-                    {m.category && (
-                      <Link
-                        className="chat-recommendation"
-                        href={categoryUrl(m.category)}
-                      >
-                        Cari Pengacara {m.category}
-                        <ArrowUpRight size={15} />
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-            {typing && (
-              <div className="message assistant">
-                <Bot size={19} />
-                <p className="typing" role="status">
-                  HiLaw Assistant sedang mengetik<span>…</span>
-                </p>
-              </div>
-            )}
-            <div ref={bottom} />
-          </div>
-          <div className="chat-bottom">
-            {messages.length === 1 && (
-              <div className="suggestions">
-                {[
-                  "Saya ingin mengurus perceraian",
-                  "Gaji saya belum dibayar",
-                  "Saya punya sengketa tanah",
-                ].map((q) => (
-                  <button
-                    disabled={typing || !ready}
-                    key={q}
-                    onClick={() => send(q)}
-                  >
-                    {q}
-                    <ArrowUpRight size={13} />
-                  </button>
-                ))}
-              </div>
-            )}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                send(input);
-              }}
-            >
-              <input
-                aria-label="Pesan untuk HiLaw Assistant"
-                maxLength={2000}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ceritakan persoalan hukum Anda…"
-                disabled={!ready}
-              />
-              <button
-                className="button"
-                aria-label="Kirim pesan"
-                disabled={!input.trim() || typing || !ready}
-              >
-                <Send size={19} />
-              </button>
-            </form>
-            <p className="disclaimer">
-              Informasi yang diberikan bersifat umum dan bukan pengganti nasihat
-              hukum profesional.
-            </p>
-          </div>
-        </div>
-      </div>
-      <Toast message={notice} onClose={() => setNotice("")} />
     </div>
   );
 }
