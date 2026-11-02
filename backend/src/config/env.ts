@@ -1,9 +1,11 @@
 import { config } from "dotenv";
 import { fileURLToPath } from "node:url";
-config({
-  path: fileURLToPath(new URL("../../.env", import.meta.url)),
-  quiet: true,
-});
+// Tests set their own variables; real keys in .env (Gemini, Midtrans) must not leak into them.
+if (process.env.NODE_ENV !== "test")
+  config({
+    path: fileURLToPath(new URL("../../.env", import.meta.url)),
+    quiet: true,
+  });
 import { z } from "zod";
 
 const schema = z.object({
@@ -15,6 +17,16 @@ const schema = z.object({
   SUPABASE_URL: z.url(),
   SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  // Optional: without a key the chatbot uses its keyword fallback.
+  GEMINI_API_KEY: z.string().trim().optional(),
+  GEMINI_MODEL: z.string().trim().min(1).default("gemini-3.5-flash-lite"),
+  // Optional: with both Midtrans keys set, top up goes through Midtrans Snap instead of the simulation.
+  MIDTRANS_SERVER_KEY: z.string().trim().optional(),
+  MIDTRANS_CLIENT_KEY: z.string().trim().optional(),
+  MIDTRANS_IS_PRODUCTION: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 });
 const result = schema.safeParse(process.env);
 if (!result.success) {

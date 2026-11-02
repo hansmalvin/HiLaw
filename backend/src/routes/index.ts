@@ -23,6 +23,22 @@ routes.post("/auth/refresh", authLimit, c.refresh);
 routes.post("/auth/signout", authenticate, c.signout);
 routes.get("/auth/me", authenticate, c.me);
 routes.get("/lawyers", c.publicLawyers);
+routes.get("/lawyers/:id/reviews", c.lawyerReviews);
+// Each chatbot call may spend Gemini quota, so it gets its own tighter limit.
+routes.post(
+  "/chatbot",
+  rateLimit({
+    windowMs: 60_000,
+    limit: 20,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    message: {
+      success: false,
+      message: "Terlalu banyak pertanyaan. Coba lagi sebentar lagi.",
+    },
+  }),
+  c.chatbot,
+);
 routes.get("/profile/me", authenticate, c.me);
 routes.put("/profile/me", authenticate, c.updateProfile);
 routes.delete("/profile/me", authLimit, authenticate, c.deleteProfile);
@@ -97,4 +113,40 @@ routes.post(
   roles("customer", "lawyer"),
   uploadProfilePhoto,
   c.updateAvatar,
+);
+
+routes.get("/wallet", authenticate, c.wallet);
+routes.post("/wallet/topup", authenticate, roles("customer"), c.topUp);
+routes.get("/payments/config", c.paymentConfig);
+routes.post(
+  "/wallet/topup/midtrans",
+  authenticate,
+  roles("customer"),
+  c.midtransTopUp,
+);
+routes.get(
+  "/wallet/topup/midtrans/:orderId",
+  authenticate,
+  roles("customer"),
+  c.midtransStatus,
+);
+// Called by Midtrans servers; trust comes from the SHA-512 signature, not a login.
+routes.post("/payments/midtrans/notification", c.midtransNotification);
+routes.get("/consultations", authenticate, c.listConsultations);
+routes.post("/consultations", authenticate, roles("customer"), c.book);
+routes.get("/consultations/:id", authenticate, c.consultation);
+routes.patch("/consultations/:id/status", authenticate, c.transition);
+routes.get("/consultations/:id/messages", authenticate, c.messages);
+routes.post("/consultations/:id/messages", authenticate, c.sendMessage);
+routes.post(
+  "/consultations/:id/review",
+  authenticate,
+  roles("customer"),
+  c.review,
+);
+routes.get(
+  "/admin/transactions",
+  authenticate,
+  roles("admin"),
+  c.adminTransactions,
 );

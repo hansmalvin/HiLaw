@@ -62,6 +62,8 @@ export const profile = z
       ])
       .optional(),
     bio: z.string().trim().max(2000).optional(),
+    rate_points: z.number().int().min(1).max(10000).optional(),
+    is_online: z.boolean().optional(),
   })
   .strict()
   .refine((s) => Object.keys(s).length > 0, "Tidak ada perubahan");
@@ -101,3 +103,83 @@ export const customerQuery = z
 export const customerDeletion = z
   .object({ confirmation: z.literal("DELETE") })
   .strict();
+
+const requestId = z.uuid();
+export const topup = z
+  .object({
+    amount: z.union([
+      z.literal(50),
+      z.literal(100),
+      z.literal(250),
+      z.literal(500),
+    ]),
+    method: z.enum([
+      "QRIS",
+      "BCA Virtual Account",
+      "Mandiri Virtual Account",
+      "GoPay",
+      "ShopeePay",
+      "Kartu Kredit",
+    ]),
+    request_id: requestId,
+  })
+  .strict();
+export const booking = z
+  .object({
+    lawyer_id: z.uuid(),
+    brief: z.string().trim().min(10).max(1500),
+    request_id: requestId,
+    duration_minutes: z
+      .union([z.literal(15), z.literal(30), z.literal(60)])
+      .default(30),
+  })
+  .strict();
+export const consultationStatus = z
+  .object({
+    status: z.enum(["Confirmed", "Ongoing", "Completed", "Cancelled"]),
+  })
+  .strict();
+export const message = z
+  .object({ id: z.uuid(), body: z.string().trim().min(1).max(2000) })
+  .strict();
+export const review = z
+  .object({
+    rating: z.number().int().min(1).max(5),
+    // Optional text: an empty box is stored as no text.
+    body: z.string().trim().max(1000).optional(),
+  })
+  .strict();
+export const chatbot = z
+  .object({
+    messages: z
+      .array(
+        z
+          .object({
+            role: z.enum(["user", "assistant"]),
+            text: z.string().trim().min(1).max(2000),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(10),
+  })
+  .strict();
+
+export const midtransTopup = z
+  .object({
+    amount: z.union([
+      z.literal(50),
+      z.literal(100),
+      z.literal(250),
+      z.literal(500),
+    ]),
+  })
+  .strict();
+export const orderId = z.string().regex(/^HILAW-[A-Za-z0-9-]{1,44}$/);
+// Midtrans sends many more fields; only the signed ones matter here.
+export const midtransNotification = z.looseObject({
+  order_id: z.string().min(1).max(50),
+  status_code: z.string().min(1).max(10),
+  gross_amount: z.string().min(1).max(20),
+  signature_key: z.string().min(1).max(256),
+});

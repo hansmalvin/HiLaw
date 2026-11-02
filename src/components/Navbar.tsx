@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import Link from "next/link";
@@ -12,7 +12,12 @@ export default function Navbar() {
   const [open, setOpen] = useState(false),
     [profile, setProfile] = useState(false),
     [notifications, setNotifications] = useState(false);
-  const { state: coins, ready: coinsReady, error: coinsError } = useCoins();
+  const {
+    balance,
+    consultations,
+    ready: coinsReady,
+    error: coinsError,
+  } = useCoins();
   const path = usePathname(),
     router = useRouter();
   const { user, ready, logout } = useAuth();
@@ -30,19 +35,8 @@ export default function Navbar() {
             ["/chatbot", "Chatbot"],
             ["/lawyers", "Cari Pengacara"],
           ];
-  const updates = user
-    ? coins.consultations
-        .filter(
-          (c) =>
-            user.role === "ADMIN" ||
-            (user.role === "CUSTOMER" && c.customerId === user.id) ||
-            (user.role === "LAWYER" &&
-              coins.platform.lawyers.some(
-                (l) => l.userId === user.id && l.id === c.lawyerId,
-              )),
-        )
-        .slice(0, 5)
-    : [];
+  // The API already returns only the consultations this account may see.
+  const updates = user ? consultations.slice(0, 5) : [];
   const close = () => {
     setOpen(false);
     setProfile(false);
@@ -59,7 +53,7 @@ export default function Navbar() {
           onClick={close}
         >
           <Scale size={30} />
-          {coins.platform.settings.platformName}
+          HiLaw
           <span className="brand-dot">.</span>
         </Link>
         <button
@@ -106,9 +100,9 @@ export default function Navbar() {
                   >
                     <Coins size={17} />
                     {coinsReady && !coinsError
-                      ? (coins.balances[user.id] ?? 0).toLocaleString("id-ID")
+                      ? balance.toLocaleString("id-ID")
                       : "—"}{" "}
-                    Coins
+                    Poin
                   </Link>
                 )}
                 <div className="nav-popover">

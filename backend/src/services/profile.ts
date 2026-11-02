@@ -48,10 +48,31 @@ export async function publicLawyers() {
   const { data, error } = await database
     .from("lawyer_profiles")
     .select(
-      "id,user_id,specialization,experience_years,bio,verification_status,profiles!inner(full_name,avatar_url)",
+      "id,user_id,specialization,experience_years,bio,verification_status,rate_points,is_online,profiles!inner(full_name,avatar_url)",
     )
     .eq("verification_status", "approved")
     .order("created_at", { ascending: false });
   check(error);
-  return data;
+  const lawyers = data ?? [];
+  // shortcut: ratings aggregated in JS from all reviews; add a rating column/view once reviews reach thousands.
+  const ratings = await database
+    .from("reviews")
+    .select("lawyer_id,rating")
+    .in(
+      "lawyer_id",
+      lawyers.map((l) => l.id),
+    );
+  check(ratings.error);
+  return lawyers.map((l) => {
+    const own = (ratings.data ?? []).filter((r) => r.lawyer_id === l.id);
+    return {
+      ...l,
+      review_count: own.length,
+      rating: own.length
+        ? Math.round(
+            (own.reduce((s, r) => s + r.rating, 0) / own.length) * 10,
+          ) / 10
+        : 0,
+    };
+  });
 }

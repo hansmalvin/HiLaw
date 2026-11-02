@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useRef, useState } from "react";
@@ -7,29 +7,28 @@ import { ArrowRight, CircleCheck, Coins } from "lucide-react";
 import { useAuth, dashboardPath } from "@/components/auth/AuthProvider";
 import { Modal } from "@/components/ui/Modal";
 import { useCoins } from "@/store/CoinProvider";
-import { rupiah } from "@/store/coinLedger";
+import { packagePrice, rupiah, SESSION_PACKAGES } from "@/store/coinLedger";
 import type { PublicLawyer } from "@/data/publicData";
 
 export function ConsultationBooking({ lawyer }: { lawyer: PublicLawyer }) {
   const { user, ready: authReady } = useAuth(),
-    { state, ready, error: storeError, book } = useCoins();
+    { balance, consultations, ready, error: storeError, book } = useCoins();
   const router = useRouter();
   const [open, setOpen] = useState(false),
     [brief, setBrief] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [success, setSuccess] = useState(false);
+    [success, setSuccess] = useState(false),
+    [minutes, setMinutes] = useState(30);
+  const price = packagePrice(lawyer.rate, minutes);
   const request = useRef(""),
     locked = useRef(false);
-  const balance = user ? (state.balances[user.id] ?? 0) : 0;
-  const existing = user
-    ? state.consultations.find(
-        (c) =>
-          c.customerId === user.id &&
-          c.lawyerId === lawyer.id &&
-          !["Completed", "Cancelled"].includes(c.status),
-      )
-    : null;
+  const existing = consultations.find(
+    (c) =>
+      c.customerId === user?.id &&
+      c.lawyerId === lawyer.id &&
+      !["Completed", "Cancelled"].includes(c.status),
+  );
 
   function begin() {
     if (!user) {
@@ -56,7 +55,7 @@ export function ConsultationBooking({ lawyer }: { lawyer: PublicLawyer }) {
     setBusy(true);
     setError("");
     try {
-      await book(lawyer.id, brief, request.current);
+      await book(lawyer.id, brief, request.current, minutes);
       setSuccess(true);
     } catch (err) {
       setError((err as Error).message);
@@ -80,7 +79,7 @@ export function ConsultationBooking({ lawyer }: { lawyer: PublicLawyer }) {
         {!lawyer.online
           ? "Pilih pengacara lain yang tersedia untuk konsultasi."
           : user?.role === "CUSTOMER"
-            ? "Pembayaran menggunakan HiLaw Coins. Menunggu konfirmasi pengacara setelah pembayaran."
+            ? "Pembayaran menggunakan Poin HiLaw. Menunggu konfirmasi pengacara setelah pembayaran."
             : "Masuk sebagai Customer untuk memulai konsultasi."}
       </small>
       {open && (
@@ -115,19 +114,40 @@ export function ConsultationBooking({ lawyer }: { lawyer: PublicLawyer }) {
           ) : (
             <>
               <h3>{lawyer.name}</h3>
-              <p>{lawyer.specialty} · Chat 30 menit</p>
+              <p>{lawyer.specialty} · Konsultasi chat</p>
+              <fieldset className="session-packages" disabled={busy}>
+                <legend>Pilih durasi sesi</legend>
+                {SESSION_PACKAGES.map((p) => (
+                  <label
+                    key={p.minutes}
+                    className={minutes === p.minutes ? "selected" : ""}
+                  >
+                    <input
+                      type="radio"
+                      name="session-package"
+                      checked={minutes === p.minutes}
+                      onChange={() => setMinutes(p.minutes)}
+                    />
+                    <strong>
+                      {p.name} · {p.minutes} menit
+                    </strong>
+                    <span>{p.note}</span>
+                    <b>{packagePrice(lawyer.rate, p.minutes)} Poin</b>
+                  </label>
+                ))}
+              </fieldset>
               <div className="booking-summary">
                 <div>
-                  <span>Tarif konsultasi</span>
-                  <strong>{lawyer.rate} Coins</strong>
+                  <span>Biaya {minutes} menit</span>
+                  <strong>{price} Poin</strong>
                 </div>
                 <div>
                   <span>Saldo saat ini</span>
-                  <strong>{balance} Coins</strong>
+                  <strong>{balance} Poin</strong>
                 </div>
                 <div>
                   <span>Setelah pembayaran</span>
-                  <strong>{Math.max(0, balance - lawyer.rate)} Coins</strong>
+                  <strong>{Math.max(0, balance - price)} Poin</strong>
                 </div>
               </div>
               {storeError ? (
@@ -145,16 +165,16 @@ export function ConsultationBooking({ lawyer }: { lawyer: PublicLawyer }) {
                     Lihat Konsultasi Saya
                   </Link>
                 </>
-              ) : balance < lawyer.rate ? (
+              ) : balance < price ? (
                 <>
                   <p className="form-error" role="alert">
                     Saldo tidak mencukupi. Anda membutuhkan tambahan{" "}
-                    {lawyer.rate - balance} Coins (
-                    {rupiah(lawyer.rate - balance)}).
+                    {price - balance} Poin ({rupiah(price - balance)}), atau
+                    pilih durasi yang lebih singkat.
                   </p>
                   <Link className="button" href="/customer/top-up">
                     <Coins size={17} />
-                    Top Up Coins
+                    Top Up Poin
                   </Link>
                 </>
               ) : (
@@ -177,7 +197,7 @@ export function ConsultationBooking({ lawyer }: { lawyer: PublicLawyer }) {
                     />
                   </label>
                   <p className="demo-note">
-                    10–1.500 karakter. Hindari data pribadi sensitif dalam demo.
+                    10–1.500 karakter. Hindari data pribadi sensitif.
                   </p>
                   {error && (
                     <p className="form-error" role="alert">
@@ -185,8 +205,10 @@ export function ConsultationBooking({ lawyer }: { lawyer: PublicLawyer }) {
                     </p>
                   )}
                   <p className="payment-info">
-                    Dengan mengonfirmasi, {lawyer.rate} Coins akan dipotong satu
-                    kali dan permintaan konsultasi dibuat.
+                    Dengan mengonfirmasi, {price} Poin dipotong satu kali. Sesi
+                    berakhir otomatis {minutes} menit setelah pengacara
+                    memulainya. Poin dikembalikan penuh bila permintaan ditolak
+                    atau dibatalkan sebelum diterima.
                   </p>
                   <div className="button-row modal-buttons">
                     <button
@@ -202,7 +224,7 @@ export function ConsultationBooking({ lawyer }: { lawyer: PublicLawyer }) {
                       type="submit"
                       disabled={busy || brief.trim().length < 10}
                     >
-                      {busy ? "Memproses…" : "Bayar " + lawyer.rate + " Coins"}
+                      {busy ? "Memproses…" : "Bayar " + price + " Poin"}
                     </button>
                   </div>
                 </form>

@@ -206,6 +206,14 @@ function AuthFormFields({ register }: { register: boolean }) {
           )}
           {!register && (
             <div className="auth-options">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                />
+                Ingat saya
+              </label>
               <button type="button" onClick={() => setForgot(true)}>
                 Forgot Password?
               </button>

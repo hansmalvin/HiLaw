@@ -1,25 +1,42 @@
-﻿import { notFound } from 'next/navigation';
-import { Dashboard } from '@/components/dashboard/Dashboard';
+import { Suspense } from "react";
+import { notFound } from "next/navigation";
+import { Dashboard } from "@/components/dashboard/Dashboard";
 
-const sections = ['dashboard', 'consultations', 'top-up', 'transactions', 'profile', 'settings'];
+const sections = [
+  "dashboard",
+  "consultations",
+  "top-up",
+  "transactions",
+  "profile",
+  "settings",
+];
 
 export function generateStaticParams() {
-  return sections.map(section => ({
-    section
-  }));
+  return sections.map((section) => ({ section }));
 }
 
-export default async function Page({ params }: {
-  params: Promise<{
-    section: string
-  }>
-}) {
+async function Content({ params }: { params: Promise<{ section: string }> }) {
   const { section } = await params;
-  if (!sections.includes(section))
-    notFound();
+  if (!sections.includes(section)) notFound();
 
-  return <Dashboard
-    role="CUSTOMER"
-    section={section}
-  />;
+  return <Dashboard role="CUSTOMER" section={section} />;
+}
+
+// Reading params inside Suspense keeps navigation instant (Next.js cacheComponents).
+export default function Page({
+  params,
+}: {
+  params: Promise<{ section: string }>;
+}) {
+  return (
+    <Suspense
+      fallback={
+        <div className="container section" role="status">
+          Memuat dashboard…
+        </div>
+      }
+    >
+      <Content params={params} />
+    </Suspense>
+  );
 }

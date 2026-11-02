@@ -1,17 +1,17 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { api } from "@/lib/api";
 import {
   ArrowRight,
   Coins,
   CircleCheck,
   History,
   MessageCircle,
-  RotateCcw,
   Wallet,
 } from "lucide-react";
-import { useAuth } from "@/components/auth/AuthProvider";
 import { Modal } from "@/components/ui/Modal";
 import { useCoins } from "@/store/CoinProvider";
 import {
@@ -53,7 +53,7 @@ function TransactionTable({
           <tr>
             <th>Tanggal (WIB)</th>
             <th>Transaksi</th>
-            <th>Coins</th>
+            <th>Poin</th>
             <th>Status</th>
             <th>Saldo setelah</th>
           </tr>
@@ -65,7 +65,7 @@ function TransactionTable({
               <td>
                 <strong>{transactionLabel[t.type]}</strong>
                 <small>{t.description}</small>
-                {t.method && <small>{t.method} · Simulasi</small>}
+                {t.method && <small>{t.method}</small>}
               </td>
               <td className={t.coins > 0 ? "coin-credit" : ""}>
                 {t.coins > 0 ? "+" : ""}
@@ -76,7 +76,7 @@ function TransactionTable({
                   Berhasil
                 </span>
               </td>
-              <td>{t.balanceAfter} Coins</td>
+              <td>{t.balanceAfter} Poin</td>
             </tr>
           ))}
         </tbody>
@@ -88,7 +88,7 @@ function TransactionTable({
       <h3>Belum ada transaksi</h3>
       <p>Top up atau pembayaran konsultasi Anda akan muncul di sini.</p>
       <Link className="text-link" href="/customer/top-up">
-        Top Up Coins <ArrowRight size={15} />
+        Top Up Poin <ArrowRight size={15} />
       </Link>
     </div>
   );
@@ -119,7 +119,7 @@ function ConsultationList({
               </div>
               <div className="consultation-actions">
                 <Status status={c.status} />
-                <strong>{c.rate} Coins</strong>
+                <strong>{c.rate} Poin</strong>
                 <button className="text-link" onClick={() => setSelected(c)}>
                   Lihat detail <ArrowRight size={14} />
                 </button>
@@ -152,7 +152,7 @@ function ConsultationList({
             <div>
               <dt>Biaya</dt>
               <dd>
-                {selected.rate} Coins · {rupiah(selected.rate)}
+                {selected.rate} Poin · {rupiah(selected.rate)}
               </dd>
             </div>
             <div>
@@ -162,12 +162,12 @@ function ConsultationList({
           </dl>
           <p className="payment-info">
             {selected.status === "Pending"
-              ? "Pembayaran berhasil. Menunggu konfirmasi pengacara; pengacara akan meninjau permintaan Anda."
+              ? "Pembayaran berhasil. Menunggu konfirmasi pengacara. Anda dapat membatalkan permintaan dan menerima refund dari ruang konsultasi."
               : selected.status === "Completed"
                 ? "Konsultasi telah selesai. Buka ruang konsultasi untuk membaca riwayat chat."
                 : "Buka ruang konsultasi untuk membaca riwayat atau melanjutkan chat."}
           </p>
-          {["Confirmed", "Ongoing", "Completed"].includes(selected.status) && (
+          {selected.status !== "Cancelled" && (
             <Link className="button" href={"/consultations/" + selected.id}>
               Buka ruang konsultasi
             </Link>
@@ -182,179 +182,100 @@ function ConsultationList({
 }
 
 export function CustomerExperience({ section }: { section: string }) {
-  const { user } = useAuth();
-  const { state, ready, error, reset } = useCoins();
-  const [resetOpen, setResetOpen] = useState(false),
-    [busy, setBusy] = useState(false),
-    [failure, setFailure] = useState("");
-  if (!user) return null;
-  const balance = state.balances[user.id] ?? 0,
-    transactions = state.transactions.filter((t) => t.userId === user.id),
-    consultations = state.consultations.filter((c) => c.customerId === user.id);
+  const { balance, transactions, consultations, ready, error } = useCoins();
 
-  async function resetData() {
-    setBusy(true);
-    setFailure("");
-    try {
-      await reset();
-      setResetOpen(false);
-    } catch (err) {
-      setFailure((err as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
+  return !ready ? (
+    error ? null : (
+      <div role="status">Memuat saldo dan aktivitas Anda…</div>
+    )
+  ) : section === "top-up" ? (
+    <TopUp />
+  ) : section === "transactions" ? (
+    <section className="dashboard-panel">
+      <h2>Riwayat transaksi</h2>
+      <p className="panel-intro">
+        Saldo tersimpan di server setelah setiap transaksi. 1 Poin = Rp1.000.
+      </p>
+      <TransactionTable transactions={transactions} />
+    </section>
+  ) : section === "consultations" ? (
+    <Consultations consultations={consultations} />
+  ) : (
     <>
-      {!ready ? (
-        <div role="status">Memuat saldo dan aktivitas Anda…</div>
-      ) : (
-        <>
-          {error && (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
-          )}
-          {!error &&
-            (section === "top-up" ? (
-              <TopUp />
-            ) : section === "transactions" ? (
-              <section className="dashboard-panel">
-                <h2>Riwayat transaksi</h2>
-                <p className="panel-intro">
-                  Saldo tersimpan setelah setiap transaksi. 1 Coin = Rp1.000.
-                </p>
-                <TransactionTable transactions={transactions} />
-              </section>
-            ) : section === "consultations" ? (
-              <Consultations consultations={consultations} />
-            ) : (
-              <>
-                <div className="customer-stats">
-                  <div className="balance-card">
-                    <span>
-                      <Coins size={18} />
-                      Saldo HiLaw Coins
-                    </span>
-                    <strong>
-                      {balance.toLocaleString("id-ID")} <small>Coins</small>
-                    </strong>
-                    <p>Setara {rupiah(balance)}</p>
-                    <Link href="/customer/top-up" className="button">
-                      Top Up Coins <ArrowRight size={16} />
-                    </Link>
-                  </div>
-                  <div className="stat-card">
-                    <MessageCircle size={23} />
-                    <strong>
-                      {
-                        consultations.filter((c) =>
-                          ["Confirmed", "Ongoing"].includes(c.status),
-                        ).length
-                      }
-                    </strong>
-                    <span>Konsultasi aktif</span>
-                    <small>
-                      {
-                        consultations.filter((c) => c.status === "Pending")
-                          .length
-                      }{" "}
-                      menunggu konfirmasi
-                    </small>
-                  </div>
-                  <div className="stat-card">
-                    <CircleCheck size={23} />
-                    <strong>
-                      {
-                        consultations.filter((c) => c.status === "Completed")
-                          .length
-                      }
-                    </strong>
-                    <span>Konsultasi selesai</span>
-                    <Link href="/customer/consultations" className="text-link">
-                      Lihat riwayat <ArrowRight size={14} />
-                    </Link>
-                  </div>
-                </div>
-                <section className="dashboard-panel">
-                  <div className="customer-panel-title">
-                    <h2>Konsultasi terbaru</h2>
-                    <Link href="/customer/consultations" className="text-link">
-                      Lihat semua <ArrowRight size={14} />
-                    </Link>
-                  </div>
-                  <ConsultationList consultations={consultations.slice(0, 3)} />
-                </section>
-                <div className="last-lawyer dashboard-panel">
-                  <div>
-                    <span className="eyebrow">PENGACARA TERAKHIR</span>
-                    <h3>
-                      {consultations[0]?.lawyerName ||
-                        "Temukan pendamping Anda"}
-                    </h3>
-                    <p>
-                      {consultations[0]?.specialty ||
-                        "Pilih pengacara sesuai kebutuhan dan anggaran Anda."}
-                    </p>
-                  </div>
-                  <Link
-                    className="button outline"
-                    href={
-                      consultations[0]
-                        ? "/lawyers/" + consultations[0].lawyerId
-                        : "/lawyers"
-                    }
-                  >
-                    {consultations[0] ? "Lihat Profil" : "Cari Pengacara"}
-                    <ArrowRight size={16} />
-                  </Link>
-                </div>
-                <section className="dashboard-panel">
-                  <h2>Transaksi terbaru</h2>
-                  <TransactionTable transactions={transactions.slice(0, 3)} />
-                </section>
-              </>
-            ))}
-        </>
-      )}
-      <div className="reset-demo-row">
-        <p>Seluruh saldo dan transaksi adalah simulasi frontend.</p>
-        <button onClick={() => setResetOpen(true)}>
-          <RotateCcw size={14} />
-          Reset Demo Data
-        </button>
+      <div className="customer-stats">
+        <div className="balance-card">
+          <span>
+            <Coins size={18} />
+            Saldo Poin HiLaw
+          </span>
+          <strong>
+            {balance.toLocaleString("id-ID")} <small>Poin</small>
+          </strong>
+          <p>Setara {rupiah(balance)}</p>
+          <Link href="/customer/top-up" className="button">
+            Top Up Poin <ArrowRight size={16} />
+          </Link>
+        </div>
+        <div className="stat-card">
+          <MessageCircle size={23} />
+          <strong>
+            {
+              consultations.filter((c) =>
+                ["Confirmed", "Ongoing"].includes(c.status),
+              ).length
+            }
+          </strong>
+          <span>Konsultasi aktif</span>
+          <small>
+            {consultations.filter((c) => c.status === "Pending").length}{" "}
+            menunggu konfirmasi
+          </small>
+        </div>
+        <div className="stat-card">
+          <CircleCheck size={23} />
+          <strong>
+            {consultations.filter((c) => c.status === "Completed").length}
+          </strong>
+          <span>Konsultasi selesai</span>
+          <Link href="/customer/consultations" className="text-link">
+            Lihat riwayat <ArrowRight size={14} />
+          </Link>
+        </div>
       </div>
-      {resetOpen && (
-        <Modal
-          title="Reset data demonstrasi?"
-          busy={busy}
-          onClose={() => setResetOpen(false)}
-        >
+      <section className="dashboard-panel">
+        <div className="customer-panel-title">
+          <h2>Konsultasi terbaru</h2>
+          <Link href="/customer/consultations" className="text-link">
+            Lihat semua <ArrowRight size={14} />
+          </Link>
+        </div>
+        <ConsultationList consultations={consultations.slice(0, 3)} />
+      </section>
+      <div className="last-lawyer dashboard-panel">
+        <div>
+          <span className="eyebrow">PENGACARA TERAKHIR</span>
+          <h3>{consultations[0]?.lawyerName || "Temukan pendamping Anda"}</h3>
           <p>
-            Saldo, transaksi, konsultasi, pesan, ulasan, serta perubahan profil
-            pengacara untuk seluruh akun akan direset. Akun login dan riwayat
-            Assistant tetap tersimpan.
+            {consultations[0]?.specialty ||
+              "Pilih pengacara sesuai kebutuhan dan anggaran Anda."}
           </p>
-          {failure && (
-            <p className="form-error" role="alert">
-              {failure}
-            </p>
-          )}
-          <div className="button-row modal-buttons">
-            <button
-              className="button outline"
-              disabled={busy}
-              onClick={() => setResetOpen(false)}
-            >
-              Batal
-            </button>
-            <button className="button" disabled={busy} onClick={resetData}>
-              {busy ? "Mereset…" : "Reset data"}
-            </button>
-          </div>
-        </Modal>
-      )}
+        </div>
+        <Link
+          className="button outline"
+          href={
+            consultations[0]
+              ? "/lawyers/" + consultations[0].lawyerId
+              : "/lawyers"
+          }
+        >
+          {consultations[0] ? "Lihat Profil" : "Cari Pengacara"}
+          <ArrowRight size={16} />
+        </Link>
+      </div>
+      <section className="dashboard-panel">
+        <h2>Transaksi terbaru</h2>
+        <TransactionTable transactions={transactions.slice(0, 3)} />
+      </section>
     </>
   );
 }
@@ -395,24 +316,93 @@ function Consultations({
   );
 }
 
+interface PaymentConfig {
+  midtrans: boolean;
+  client_key?: string;
+  snap_url?: string;
+  sandbox?: boolean;
+}
+interface SnapCallbacks {
+  onSuccess: () => void;
+  onPending: () => void;
+  onError: () => void;
+  onClose: () => void;
+}
+declare global {
+  interface Window {
+    snap?: { pay: (token: string, callbacks: SnapCallbacks) => void };
+  }
+}
+
+// Snap.js is loaded on demand, only when the customer actually pays.
+function loadSnap(src: string, clientKey: string) {
+  if (window.snap) return Promise.resolve();
+  return new Promise<void>((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = src;
+    script.dataset.clientKey = clientKey;
+    script.onload = () => resolve();
+    script.onerror = () =>
+      reject(new Error("Midtrans Snap gagal dimuat. Periksa koneksi Anda."));
+    document.head.appendChild(script);
+  });
+}
+
 function TopUp() {
-  const { user } = useAuth();
-  const { state, topUp } = useCoins();
+  const { balance, transactions, topUp, refresh } = useCoins();
+  const params = useSearchParams();
   const [coins, setCoins] = useState<number>(100),
     [method, setMethod] = useState<PaymentMethod>("QRIS"),
     [confirm, setConfirm] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [success, setSuccess] = useState(false);
+    [success, setSuccess] = useState<number | null>(null),
+    [gateway, setGateway] = useState<PaymentConfig | null>(null),
+    [pending, setPending] = useState<string | null>(null);
   const request = useRef(""),
     locked = useRef(false);
-  if (!user) return null;
+  const midtrans = !!gateway?.midtrans;
+
+  // Asks the backend, which asks Midtrans; points are credited only on settlement.
+  const verify = (orderId: string) =>
+    api<{ status: string; amount: number }>(
+      "/wallet/topup/midtrans/" + encodeURIComponent(orderId),
+    )
+      .then(async (order) => {
+        if (order.status === "settlement") {
+          await refresh();
+          setPending(null);
+          setSuccess(order.amount);
+        } else if (order.status === "pending") setPending(orderId);
+        else {
+          setPending(null);
+          setError("Pembayaran " + order.status + ". Poin tidak ditambahkan.");
+        }
+      })
+      .catch((err: Error) => setError(err.message));
+
+  useEffect(() => {
+    let active = true;
+    api<PaymentConfig>("/payments/config", {}, false)
+      .then((config) => active && setGateway(config))
+      .catch(() => active && setGateway({ midtrans: false }));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Redirect-based methods come back with ?order_id=... from Midtrans.
+  const returnedOrder = params.get("order_id");
+  useEffect(() => {
+    if (returnedOrder?.startsWith("HILAW-")) void verify(returnedOrder);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once per returned order
+  }, [returnedOrder]);
 
   function open() {
     request.current = crypto.randomUUID();
     setError("");
     setConfirm(true);
-    setSuccess(false);
+    setSuccess(null);
   }
 
   async function pay() {
@@ -423,7 +413,35 @@ function TopUp() {
     try {
       await topUp(coins, method, request.current);
       setConfirm(false);
-      setSuccess(true);
+      setSuccess(coins);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      locked.current = false;
+      setBusy(false);
+    }
+  }
+
+  async function payWithMidtrans() {
+    if (locked.current || !gateway?.snap_url || !gateway.client_key) return;
+    locked.current = true;
+    setBusy(true);
+    setError("");
+    setSuccess(null);
+    try {
+      const order = await api<{ order_id: string; token: string }>(
+        "/wallet/topup/midtrans",
+        { method: "POST", body: JSON.stringify({ amount: coins }) },
+      );
+      await loadSnap(gateway.snap_url, gateway.client_key);
+      const done = () => void verify(order.order_id);
+      window.snap!.pay(order.token, {
+        onSuccess: done,
+        onPending: done,
+        onClose: done,
+        onError: () =>
+          setError("Pembayaran gagal di Midtrans. Silakan coba lagi."),
+      });
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -437,18 +455,16 @@ function TopUp() {
       <div className="topup-balance">
         <Wallet size={28} />
         <div>
-          <span>Saldo HiLaw Coins</span>
-          <strong>
-            {(state.balances[user.id] ?? 0).toLocaleString("id-ID")} Coins
-          </strong>
+          <span>Saldo Poin HiLaw</span>
+          <strong>{balance.toLocaleString("id-ID")} Poin</strong>
         </div>
-        <small>1 Coin = Rp1.000</small>
+        <small>1 Poin = Rp1.000</small>
       </div>
-      {success && (
+      {success !== null && (
         <div className="payment-success" role="status">
           <CircleCheck size={25} />
           <div>
-            <strong>Top up {coins} Coins berhasil!</strong>
+            <strong>Top up {success} Poin berhasil!</strong>
             <p>
               Saldo baru telah tersimpan. Anda dapat melanjutkan memilih
               pengacara.
@@ -459,10 +475,29 @@ function TopUp() {
           </Link>
         </div>
       )}
+      {pending && (
+        <div className="payment-info topup-pending" role="status">
+          <span>
+            Menunggu pembayaran Midtrans ({pending}). Selesaikan pembayaran,
+            lalu cek status. Poin masuk otomatis setelah lunas.
+          </span>
+          <button
+            className="button outline small"
+            onClick={() => void verify(pending)}
+          >
+            Cek status pembayaran
+          </button>
+        </div>
+      )}
+      {error && !confirm && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
       <div className="topup-layout">
         <section className="dashboard-panel">
-          <h2>Pilih paket Coins</h2>
-          <p className="panel-intro">Tanpa biaya tambahan pada simulasi ini.</p>
+          <h2>Pilih paket Poin</h2>
+          <p className="panel-intro">Tanpa biaya tambahan.</p>
           <div className="coin-packages">
             {COIN_PACKAGES.map((amount) => (
               <button
@@ -471,38 +506,40 @@ function TopUp() {
                 aria-pressed={coins === amount}
                 onClick={() => {
                   setCoins(amount);
-                  setSuccess(false);
+                  setSuccess(null);
                 }}
               >
                 <Coins size={23} />
-                <strong>{amount} Coins</strong>
+                <strong>{amount} Poin</strong>
                 <span>{rupiah(amount)}</span>
                 {amount === 100 && <small>Pilihan populer</small>}
               </button>
             ))}
           </div>
-          <label className="payment-method-label">
-            Metode pembayaran simulasi
-            <select
-              value={method}
-              onChange={(e) => setMethod(e.target.value as PaymentMethod)}
-            >
-              {PAYMENT_METHODS.map((m) => (
-                <option key={m}>{m}</option>
-              ))}
-            </select>
-          </label>
+          {!midtrans && (
+            <label className="payment-method-label">
+              Metode pembayaran simulasi
+              <select
+                value={method}
+                onChange={(e) => setMethod(e.target.value as PaymentMethod)}
+              >
+                {PAYMENT_METHODS.map((m) => (
+                  <option key={m}>{m}</option>
+                ))}
+              </select>
+            </label>
+          )}
         </section>
         <section className="dashboard-panel purchase-summary">
           <h2>Ringkasan pembelian</h2>
           <dl>
             <div>
               <dt>Paket</dt>
-              <dd>{coins} Coins</dd>
+              <dd>{coins} Poin</dd>
             </div>
             <div>
               <dt>Metode</dt>
-              <dd>{method}</dd>
+              <dd>{midtrans ? "Dipilih di Midtrans" : method}</dd>
             </div>
             <div>
               <dt>Biaya tambahan</dt>
@@ -513,20 +550,33 @@ function TopUp() {
               <dd>{rupiah(coins)}</dd>
             </div>
           </dl>
-          <button className="button" onClick={open}>
-            Top Up {coins} Coins <ArrowRight size={16} />
+          <button
+            className="button"
+            disabled={!gateway || busy}
+            onClick={midtrans ? payWithMidtrans : open}
+          >
+            {!gateway
+              ? "Memuat metode pembayaran…"
+              : busy && midtrans
+                ? "Membuka Midtrans…"
+                : midtrans
+                  ? "Bayar " + rupiah(coins) + " dengan Midtrans"
+                  : "Top Up " + coins + " Poin"}
+            <ArrowRight size={16} />
           </button>
           <p className="demo-note">
-            Pembayaran simulasi. Tidak ada uang asli yang ditagihkan.
+            {midtrans
+              ? gateway?.sandbox
+                ? "Midtrans Sandbox: QRIS, Virtual Account, e-wallet, dan kartu. Bayar memakai simulator Midtrans, bukan uang asli."
+                : "Pembayaran diproses oleh Midtrans."
+              : "Pembayaran simulasi. Tidak ada uang asli yang ditagihkan."}
           </p>
         </section>
       </div>
       <section className="dashboard-panel topup-history">
         <h2>Riwayat top up</h2>
         <TransactionTable
-          transactions={state.transactions.filter(
-            (t) => t.userId === user.id && t.type === "TOP_UP",
-          )}
+          transactions={transactions.filter((t) => t.type === "TOP_UP")}
         />
       </section>
       {confirm && (
@@ -537,7 +587,7 @@ function TopUp() {
         >
           <span className="tag">Simulasi pembayaran</span>
           <p className="modal-amount">
-            {coins} <small>HiLaw Coins</small>
+            {coins} <small>Poin HiLaw</small>
           </p>
           <p>
             Total {rupiah(coins)} melalui {method}.

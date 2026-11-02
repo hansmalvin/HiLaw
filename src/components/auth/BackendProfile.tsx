@@ -2,10 +2,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { api, reloadRemote, saveSession, type ApiProfile } from "@/lib/api";
-import {
-  lawyerPreferences,
-  saveLawyerPreferences,
-} from "@/lib/lawyerPreferences";
 import { useAuth } from "./AuthProvider";
 import { Modal } from "@/components/ui/Modal";
 export function BackendProfile() {
@@ -39,7 +35,10 @@ export function BackendProfile() {
       .then((p) => {
         setProfile(p);
         if (p.lawyer_profile)
-          setPreferences(lawyerPreferences(p.lawyer_profile.id));
+          setPreferences({
+            rate: p.lawyer_profile.rate_points ?? 50,
+            online: p.lawyer_profile.is_online ?? true,
+          });
         setForm({
           full_name: p.full_name,
           phone: p.phone ?? "",
@@ -64,7 +63,13 @@ export function BackendProfile() {
           ...(profile?.role === "admin"
             ? { avatar_url: form.avatar_url || null }
             : {}),
-          ...(profile?.role === "lawyer" ? { bio: form.bio } : {}),
+          ...(profile?.role === "lawyer"
+            ? {
+                bio: form.bio,
+                rate_points: preferences.rate,
+                is_online: preferences.online,
+              }
+            : {}),
         }),
       });
       if (photo && (p.role === "customer" || p.role === "lawyer")) {
@@ -88,12 +93,6 @@ export function BackendProfile() {
         setPhotoVersion((value) => value + 1);
       }
       setForm((value) => ({ ...value, avatar_url: p.avatar_url ?? "" }));
-      if (p.lawyer_profile)
-        saveLawyerPreferences(
-          p.lawyer_profile.id,
-          preferences.rate,
-          preferences.online,
-        );
       setProfile(p);
       reloadRemote();
       setSuccess("Profil berhasil diperbarui.");
@@ -222,7 +221,7 @@ export function BackendProfile() {
             {profile.role === "lawyer" && (
               <>
                 <label>
-                  Tarif (Coins / 30 menit)
+                  Tarif (Poin / 30 menit)
                   <input
                     required
                     type="number"

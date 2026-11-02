@@ -8,6 +8,8 @@ import { errorHandler } from "./middlewares/errors.js";
 import { ApiError } from "./utils/errors.js";
 export const app = express();
 app.disable("x-powered-by");
+// Vercel sits one proxy hop in front; without this every visitor shares one rate-limit bucket.
+if (process.env.VERCEL) app.set("trust proxy", 1);
 app.use(helmet());
 app.use(
   cors({
@@ -39,3 +41,5 @@ app.use((_req, _res, next) =>
   next(new ApiError(404, "Endpoint tidak ditemukan.")),
 );
 app.use(errorHandler);
+// Vercel runs this module as a Function and needs the app as the default export.
+export default app;

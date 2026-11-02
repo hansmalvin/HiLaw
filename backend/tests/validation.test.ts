@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import * as v from "../src/validators/index.js";
 import {
   signup,
   profile,
@@ -78,4 +79,15 @@ test("file content signatures must match allowed MIME", () => {
     fileExtension(Buffer.from("<script>bad</script>"), "image/png"),
   );
   assert.throws(() => fileExtension(Buffer.from("%PDF-1.7"), "image/jpeg"));
+});
+
+test("booking defaults to the 30-minute package and review text is optional", () => {
+  const id = "11111111-1111-4111-8111-111111111111";
+  const base = { lawyer_id: id, brief: "Kronologi singkat kasus.", request_id: id };
+  assert.equal(v.booking.parse(base).duration_minutes, 30);
+  assert.equal(v.booking.parse({ ...base, duration_minutes: 60 }).duration_minutes, 60);
+  assert.throws(() => v.booking.parse({ ...base, duration_minutes: 45 }));
+  assert.equal(v.review.parse({ rating: 5 }).body, undefined);
+  assert.equal(v.review.parse({ rating: 4, body: "  " }).body, "");
+  assert.throws(() => v.review.parse({ rating: 0 }));
 });
