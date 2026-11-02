@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
-import helmet from "helmet";
+// Vercel's compiler types helmet's default import as the whole module ("not callable");
+// `.default` is the function under both ESM and CJS typings and at runtime.
+import * as helmetModule from "helmet";
 import { rateLimit } from "express-rate-limit";
 import { env } from "./config/env.js";
 import { routes } from "./routes/index.js";
@@ -10,7 +12,7 @@ export const app = express();
 app.disable("x-powered-by");
 // Vercel sits one proxy hop in front; without this every visitor shares one rate-limit bucket.
 if (process.env.VERCEL) app.set("trust proxy", 1);
-app.use(helmet());
+app.use(helmetModule.default());
 app.use(
   cors({
     origin: (origin, cb) =>

@@ -180,9 +180,9 @@
     "semantic_hash": ""
   },
   "backend/src/app.ts": {
-    "mtime": 1793613803.4145353,
-    "seen": 1793614282.0194695,
-    "ast_hash": "da22fceb21a7d59c1820bccd180ddd70",
+    "mtime": 1793644596.8271961,
+    "seen": 1793644889.6867614,
+    "ast_hash": "d88ccaebd0d010f3e2d95a7900da199f",
     "semantic_hash": ""
   },
   "backend/src/config/env.ts": {
@@ -408,9 +408,9 @@
     "semantic_hash": ""
   },
   "src/components/auth/AuthForm.tsx": {
-    "mtime": 1793637692.8976543,
-    "seen": 1793638229.4676464,
-    "ast_hash": "40407cb399c22b9549b54d72c5c7fd37",
+    "mtime": 1793644647.4637074,
+    "seen": 1793644889.6869605,
+    "ast_hash": "f03b95610a449785bb3de03b096d8903",
     "semantic_hash": ""
   },
   "src/components/auth/AuthProvider.tsx": {
@@ -426,9 +426,9 @@
     "semantic_hash": ""
   },
   "src/components/auth/BackendProfile.tsx": {
-    "mtime": 1793637672.023029,
-    "seen": 1793638229.4676511,
-    "ast_hash": "809daed7d374bdf29f41d4d4758fbb5e",
+    "mtime": 1793644712.2194142,
+    "seen": 1793644889.6869655,
+    "ast_hash": "698b659f152b0980d723224068176484",
     "semantic_hash": ""
   },
   "src/components/customer/ConsultationBooking.tsx": {
@@ -540,9 +540,9 @@
     "semantic_hash": ""
   },
   "tests/auth-navigation.test.cjs": {
-    "mtime": 1793610646.3278408,
-    "seen": 1793612726.9686692,
-    "ast_hash": "7dc911649cf3ee7857b300703233a6d0",
+    "mtime": 1793644676.9826994,
+    "seen": 1793644889.6870008,
+    "ast_hash": "cc7b86609989a714ef1f56abfa917515",
     "semantic_hash": ""
   },
   "tests/auth.test.cjs": {
