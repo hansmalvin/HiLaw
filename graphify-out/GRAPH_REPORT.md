@@ -1,7 +1,7 @@
 # Graph Report - HiLaw  (2026-11-03)
 
 ## Corpus Check
-- 108 files · ~51,042 words
+- 108 files · ~51,052 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 7 file(s) not represented in the graph (top: .example 2, (none) 2, .pptx 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `a37d0fcf`
+- Built from commit: `82cb6832`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
