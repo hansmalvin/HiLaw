@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { useCoins } from "@/store/CoinProvider";
 import { Modal } from "@/components/ui/Modal";
-import { LawyerVerification } from "./LawyerVerification";
+import { BackendVerification } from "./BackendVerification";
 import { Status, localDate } from "@/components/customer/CustomerExperience";
 import {
   earnings,
@@ -17,25 +17,29 @@ import {
 import {
   ArrowRight,
   CircleCheck,
+  Coins,
+  Inbox,
   MessageCircle,
-  Users,
+  Percent,
+  Timer,
   Wallet,
+  type LucideIcon,
 } from "lucide-react";
 
-export function MetricCards({ items }: { items: [string, string | number][] }) {
+export function MetricCards({
+  items,
+}: {
+  items: [string, string | number, LucideIcon][];
+}) {
   return (
     <div className="ops-metrics">
-      {items.map(([label, value], i) => {
-        const Icon = [Users, MessageCircle, CircleCheck, Wallet][i % 4];
-
-        return (
-          <div className="stat-card" key={label}>
-            <Icon size={22} />
-            <strong>{value}</strong>
-            <span>{label}</span>
-          </div>
-        );
-      })}
+      {items.map(([label, value, Icon]) => (
+        <div className="stat-card" key={label}>
+          <Icon size={22} />
+          <strong>{value}</strong>
+          <span>{label}</span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -249,9 +253,19 @@ export function LawyerExperience({ section }: { section: string }) {
   const { user } = useAuth();
   const { consultations: sessions, lawyers, balance, ready, error } =
     useCoins();
-  if (!ready) return error ? null : <p role="status">Memuat ruang kerja…</p>;
+  if (!ready)
+    return error ? null : (
+      <p className="loading" role="status">
+        Memuat ruang kerja…
+      </p>
+    );
   const profile = lawyers.find((l) => l.userId === user?.id);
-  if (!profile) return <p role="status">Menyiapkan profil pengacara…</p>;
+  if (!profile)
+    return (
+      <p className="loading" role="status">
+        Menyiapkan profil pengacara…
+      </p>
+    );
   const income = earnings(sessions, profile.id);
 
   return (
@@ -271,7 +285,7 @@ export function LawyerExperience({ section }: { section: string }) {
         </div>
       </div>
       {section === "profile" && (
-        <LawyerVerification key={profile.id + profile.verification} />
+        <BackendVerification key={profile.id + profile.verification} />
       )}
       {section === "profile" || section === "settings" ? (
         <BackendProfile />
@@ -279,10 +293,14 @@ export function LawyerExperience({ section }: { section: string }) {
         <>
           <MetricCards
             items={[
-              ["Saldo Poin Anda", balance.toLocaleString("id-ID") + " Poin"],
-              ["Nilai konsultasi selesai", rupiah(income.gross)],
-              ["Penghasilan pengacara (80%)", rupiah(income.lawyer)],
-              ["Komisi HiLaw (20%)", rupiah(income.platform)],
+              [
+                "Saldo Poin Anda",
+                balance.toLocaleString("id-ID") + " Poin",
+                Coins,
+              ],
+              ["Nilai konsultasi selesai", rupiah(income.gross), CircleCheck],
+              ["Penghasilan pengacara (80%)", rupiah(income.lawyer), Wallet],
+              ["Komisi HiLaw (20%)", rupiah(income.platform), Percent],
             ]}
           />
           <section className="dashboard-panel">
@@ -300,18 +318,24 @@ export function LawyerExperience({ section }: { section: string }) {
             <>
               <MetricCards
                 items={[
-                  ["Total konsultasi", sessions.length],
+                  ["Total konsultasi", sessions.length, MessageCircle],
                   [
                     "Permintaan baru",
                     sessions.filter((c) => c.status === "Pending").length,
+                    Inbox,
                   ],
                   [
                     "Konsultasi aktif",
                     sessions.filter((c) =>
                       ["Confirmed", "Ongoing"].includes(c.status),
                     ).length,
+                    Timer,
                   ],
-                  ["Konsultasi selesai", income.completed.length],
+                  [
+                    "Konsultasi selesai",
+                    income.completed.length,
+                    CircleCheck,
+                  ],
                 ]}
               />
               <div className="dashboard-welcome">

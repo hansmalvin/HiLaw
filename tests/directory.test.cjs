@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
 const ts = require("typescript");
-function harness() {
+function harness({ ready = true } = {}) {
   const states = [];
   let cursor = 0;
   const lawyers = [
@@ -50,7 +50,10 @@ function harness() {
         "next/navigation": { useSearchParams: () => new URLSearchParams() },
         "next/link": { default: "link" },
         "lucide-react": {},
-        "@/store/CoinProvider": { usePublicLawyers: () => lawyers },
+        "@/store/CoinProvider": {
+          usePublicLawyers: () => (ready ? lawyers : []),
+          useCoins: () => ({ ready, error: "" }),
+        },
         "@/data/publicData": { categories: ["Hukum Pidana"] },
         "@/components/ui/Toast": {},
         "@/components/customer/ConsultationBooking": {},
@@ -82,6 +85,19 @@ function harness() {
     rating: (tree) => all(tree, (n) => n.type === "select")[1],
   };
 }
+test("while loading, the directory shows placeholders instead of a false empty result", () => {
+  const h = harness({ ready: false }),
+    tree = h.render();
+  assert.equal(h.ids(tree).length, 0);
+  assert.equal(
+    h.all(tree, (n) => n.type?.name === "CardSkeletons")[0].props.count,
+    4,
+  );
+  assert.equal(
+    h.all(tree, (n) => n.props?.className === "empty-state").length,
+    0,
+  );
+});
 test("default range includes all rates and unrated lawyers", () => {
   const h = harness(),
     tree = h.render();

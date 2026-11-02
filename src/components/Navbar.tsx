@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useCoins } from "@/store/CoinProvider";
 import { usePathname, useRouter } from "next/navigation";
 import { Menu, X, Scale, Bell, Coins, ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth, roleLabel } from "./auth/AuthProvider";
 
 export default function Navbar() {
@@ -37,14 +37,31 @@ export default function Navbar() {
           ];
   // The API already returns only the consultations this account may see.
   const updates = user ? consultations.slice(0, 5) : [];
-  const close = () => {
+  const header = useRef<HTMLElement>(null);
+  const close = useCallback(() => {
     setOpen(false);
     setProfile(false);
     setNotifications(false);
-  };
+  }, []);
+  // Menus close on a click outside the header or on Escape, like native popovers.
+  useEffect(() => {
+    if (!open && !profile && !notifications) return;
+    const onPointer = (e: PointerEvent) => {
+      if (!header.current?.contains(e.target as Node)) close();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open, profile, notifications, close]);
 
   return (
-    <header className="site-header">
+    <header className="site-header" ref={header}>
       <div className="container nav-row">
         <Link
           href="/"

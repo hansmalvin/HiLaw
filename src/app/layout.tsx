@@ -4,7 +4,7 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
 import Navbar from "@/components/Navbar";
-import { AppAuthProvider } from "@/components/auth/AppAuthProvider";
+import { BackendAuthProvider } from "@/components/auth/BackendAuthProvider";
 import { CoinProvider } from "@/store/CoinProvider";
 import { Footer } from "@/components/public/PublicWebsite";
 
@@ -17,7 +17,7 @@ const jakarta = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: "HiLaw — Bantuan Hukum, Kini Lebih Mudah",
   description:
-    "Temukan pengacara sesuai kebutuhan dan pahami persoalan hukum Anda bersama HiLaw. Prototipe frontend konsultasi hukum.",
+    "Temukan pengacara sesuai kebutuhan dan pahami persoalan hukum Anda bersama HiLaw. Prototipe konsultasi hukum online.",
 };
 
 export default function RootLayout({
@@ -29,7 +29,7 @@ export default function RootLayout({
     <html lang="id" className={jakarta.variable}>
       <body>
         <div id="toast-root" className="toast-stack" />
-        <AppAuthProvider>
+        <BackendAuthProvider>
           <CoinProvider>
             <Suspense
               fallback={
@@ -45,7 +45,7 @@ export default function RootLayout({
             <main>{children}</main>
             <Footer />
           </CoinProvider>
-        </AppAuthProvider>
+        </BackendAuthProvider>
       </body>
     </html>
   );

@@ -22,7 +22,9 @@ app.use(
 app.use(
   rateLimit({
     windowMs: 60_000,
-    limit: 120,
+    // Per IP, so it must fit several signed-in users behind one address (a demo laptop, campus NAT):
+    // each open chat room polls ~36 requests/min, and 120 locked every account out after 3–4 rooms.
+    limit: 600,
     standardHeaders: "draft-8",
     legacyHeaders: false,
     message: { success: false, message: "Terlalu banyak request." },

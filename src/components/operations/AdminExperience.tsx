@@ -16,6 +16,16 @@ import {
 } from "@/store/coinLedger";
 import { localDate } from "@/components/customer/CustomerExperience";
 import { MetricCards, SessionTable } from "./LawyerExperience";
+import {
+  CircleCheck,
+  Coins,
+  MessageCircle,
+  Percent,
+  RotateCcw,
+  ShieldCheck,
+  Users,
+  Wallet,
+} from "lucide-react";
 
 interface Overview {
   customers: number;
@@ -73,7 +83,12 @@ function Operations({ section }: { section: string }) {
         {error}
       </p>
     );
-  if (!ready || !overview) return <p role="status">Memuat data operasional…</p>;
+  if (!ready || !overview)
+    return (
+      <p className="loading" role="status">
+        Memuat data operasional…
+      </p>
+    );
   const income = earnings(consultations);
   const matches = (text: string) =>
     text.toLowerCase().includes(query.toLowerCase());
@@ -110,18 +125,20 @@ function Operations({ section }: { section: string }) {
     const rows = overview.transactions.filter((t) =>
       matches(t.description + " " + (t.userName ?? "") + " " + t.type),
     );
+    const count = (type: CoinTransaction["type"]) =>
+      overview.transactions.filter((t) => t.type === type).length;
     return (
       <>
         <MetricCards
           items={[
-            ["Poin pada saldo Customer", overview.customerBalance],
-            ...(["TOP_UP", "CONSULTATION_PAYMENT", "REFUND"] as const).map(
-              (type) =>
-                [
-                  transactionLabel[type],
-                  overview.transactions.filter((t) => t.type === type).length,
-                ] as [string, number],
-            ),
+            ["Poin pada saldo Customer", overview.customerBalance, Coins],
+            [transactionLabel.TOP_UP, count("TOP_UP"), Wallet],
+            [
+              transactionLabel.CONSULTATION_PAYMENT,
+              count("CONSULTATION_PAYMENT"),
+              MessageCircle,
+            ],
+            [transactionLabel.REFUND, count("REFUND"), RotateCcw],
           ]}
         />
         <section className="dashboard-panel">
@@ -171,9 +188,9 @@ function Operations({ section }: { section: string }) {
       <>
         <MetricCards
           items={[
-            ["Nilai konsultasi selesai", rupiah(income.gross)],
-            ["Komisi HiLaw (20%)", rupiah(income.platform)],
-            ["Hak pengacara (80%)", rupiah(income.lawyer)],
+            ["Nilai konsultasi selesai", rupiah(income.gross), CircleCheck],
+            ["Komisi HiLaw (20%)", rupiah(income.platform), Percent],
+            ["Hak pengacara (80%)", rupiah(income.lawyer), Wallet],
           ]}
         />
         <section className="dashboard-panel">
@@ -226,10 +243,10 @@ function Operations({ section }: { section: string }) {
     <>
       <MetricCards
         items={[
-          ["Total Customer", overview.customers],
-          ["Pengacara terverifikasi", lawyers.length],
-          ["Total konsultasi", consultations.length],
-          ["Pendapatan platform", rupiah(income.platform)],
+          ["Total Customer", overview.customers, Users],
+          ["Pengacara terverifikasi", lawyers.length, ShieldCheck],
+          ["Total konsultasi", consultations.length, MessageCircle],
+          ["Pendapatan platform", rupiah(income.platform), Wallet],
         ]}
       />
       <div className="admin-overview-grid">

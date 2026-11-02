@@ -30,6 +30,7 @@ export function BackendProfile() {
   const [deleting, setDeleting] = useState(false);
   const [confirmation, setConfirmation] = useState("");
   const [password, setPassword] = useState("");
+  const photoUrl = preview || profile?.avatar_url;
   useEffect(() => {
     void api<ApiProfile>("/profile/me")
       .then((p) => {
@@ -131,7 +132,9 @@ export function BackendProfile() {
       )}
       {success && <p role="status">{success}</p>}
       {!profile ? (
-        <p role="status">Memuat profil...</p>
+        <p className="loading" role="status">
+          Memuat profil...
+        </p>
       ) : (
         <>
           <form className="auth-form ops-form" onSubmit={save}>
@@ -165,6 +168,15 @@ export function BackendProfile() {
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
               />
             </label>
+            {photoUrl && (
+              // Blob or Supabase Storage URL; next/image would need remotePatterns config.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                className="profile-photo-preview"
+                src={photoUrl}
+                alt={preview ? "Pratinjau foto profil baru" : "Foto profil saat ini"}
+              />
+            )}
             {profile.role !== "admin" ? (
               <>
                 <label>
@@ -254,21 +266,31 @@ export function BackendProfile() {
                 </label>
               </>
             )}
-            <button className="button" disabled={busy}>
+            <button className="button form-submit" disabled={busy}>
               {busy ? "Menyimpan..." : "Simpan profil"}
             </button>
           </form>
-          <button
-            className="button outline"
-            onClick={() => {
-              setDeleting(true);
-              setError("");
-              setConfirmation("");
-              setPassword("");
-            }}
-          >
-            Hapus akun
-          </button>
+          <div className="danger-zone">
+            <div>
+              <strong>Hapus akun</strong>
+              <p>
+                Akun, profil, dan riwayat verifikasi dihapus permanen dan tidak
+                dapat dipulihkan.
+              </p>
+            </div>
+            <button
+              className="button danger outline"
+              disabled={busy}
+              onClick={() => {
+                setDeleting(true);
+                setError("");
+                setConfirmation("");
+                setPassword("");
+              }}
+            >
+              Hapus akun
+            </button>
+          </div>
         </>
       )}
       {deleting && (
@@ -307,7 +329,7 @@ export function BackendProfile() {
               </p>
             )}
             <button
-              className="button"
+              className="button danger"
               disabled={busy || confirmation !== "DELETE"}
             >
               Hapus akun saya

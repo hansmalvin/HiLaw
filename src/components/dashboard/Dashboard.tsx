@@ -15,6 +15,13 @@ import {
   History,
   UserRound,
   ShieldCheck,
+  Inbox,
+  Wallet,
+  Users,
+  BriefcaseBusiness,
+  ChartColumn,
+  Settings,
+  type LucideIcon,
 } from "lucide-react";
 import {
   useAuth,
@@ -23,31 +30,31 @@ import {
   type AuthRole,
 } from "../auth/AuthProvider";
 
-const menus: Record<AuthRole, [string, string][]> = {
+const menus: Record<AuthRole, [string, string, LucideIcon][]> = {
   CUSTOMER: [
-    ["dashboard", "Dashboard"],
-    ["consultations", "Konsultasi Saya"],
-    ["top-up", "Poin HiLaw"],
-    ["transactions", "Riwayat Transaksi"],
-    ["profile", "Profil"],
+    ["dashboard", "Dashboard", LayoutDashboard],
+    ["consultations", "Konsultasi Saya", MessageCircle],
+    ["top-up", "Poin HiLaw", Coins],
+    ["transactions", "Riwayat Transaksi", History],
+    ["profile", "Profil", UserRound],
   ],
   LAWYER: [
-    ["dashboard", "Dashboard"],
-    ["requests", "Permintaan Konsultasi"],
-    ["active", "Konsultasi Aktif"],
-    ["history", "Riwayat Konsultasi"],
-    ["earnings", "Pendapatan"],
-    ["profile", "Profil Pengacara"],
+    ["dashboard", "Dashboard", LayoutDashboard],
+    ["requests", "Permintaan Konsultasi", Inbox],
+    ["active", "Konsultasi Aktif", MessageCircle],
+    ["history", "Riwayat Konsultasi", History],
+    ["earnings", "Pendapatan", Wallet],
+    ["profile", "Profil Pengacara", UserRound],
   ],
   ADMIN: [
-    ["", "Dashboard"],
-    ["customers", "Kelola Customer"],
-    ["lawyers", "Kelola Pengacara"],
-    ["verification", "Verifikasi Pengacara"],
-    ["consultations", "Kelola Konsultasi"],
-    ["transactions", "Transaksi Poin"],
-    ["reports", "Laporan Pendapatan"],
-    ["settings", "Pengaturan"],
+    ["", "Dashboard", LayoutDashboard],
+    ["customers", "Kelola Customer", Users],
+    ["lawyers", "Kelola Pengacara", BriefcaseBusiness],
+    ["verification", "Verifikasi Pengacara", ShieldCheck],
+    ["consultations", "Kelola Konsultasi", MessageCircle],
+    ["transactions", "Transaksi Poin", Coins],
+    ["reports", "Laporan Pendapatan", ChartColumn],
+    ["settings", "Pengaturan", Settings],
   ],
 };
 
@@ -96,16 +103,8 @@ export function Dashboard({
           </div>
         </div>
         <nav aria-label="Menu dashboard">
-          {menus[role].map(([key, label], i) => {
+          {menus[role].map(([key, label, Icon]) => {
             const href = root + (key ? "/" + key : "");
-            const Icon = [
-              LayoutDashboard,
-              MessageCircle,
-              Coins,
-              History,
-              UserRound,
-              ShieldCheck,
-            ][i % 6];
 
             return (
               <Link

@@ -103,7 +103,9 @@ export function AdminCustomers() {
         </p>
       )}
       {loading ? (
-        <p role="status">Memuat customer...</p>
+        <p className="loading" role="status">
+          Memuat customer...
+        </p>
       ) : (
         <>
           <p>{data.total} akun customer</p>
