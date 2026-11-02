@@ -1,12 +1,12 @@
-# Graph Report - HiLaw  (2026-11-02)
+# Graph Report - HiLaw  (2026-11-03)
 
 ## Corpus Check
-- 108 files · ~50,570 words
+- 108 files · ~51,013 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 7 file(s) not represented in the graph (top: .example 2, (none) 2, .pptx 1)
 
 ## Summary
-- 762 nodes · 1634 edges · 44 communities (33 shown, 11 thin omitted)
+- 764 nodes · 1638 edges · 43 communities (32 shown, 11 thin omitted)
 - Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 29 edges (avg confidence: 0.87)
 - Token cost: 0 input · 0 output
 
@@ -22,7 +22,7 @@
 - api
 - check
 - PublicWebsite.tsx
-- react
+- ConsultationBooking.tsx
 - File SVG Asset
 - Globe SVG Asset
 - Next.js SVG Asset
@@ -50,10 +50,9 @@
 - AdminCustomers.tsx
 - AdminExperience.tsx
 - CoinProvider.tsx
-- Dashboard
+- LawyerExperience.tsx
 - test-consultation-flow.mjs
 - 006_midtrans_topup.sql
-- AuthForm
 - avatar.test.ts
 
 ## God Nodes (most connected - your core abstractions)
@@ -71,14 +70,14 @@
 ## Surprising Connections (you probably didn't know these)
 - `6. Integrasi frontend dan fitur yang masih mock` --references--> `BackendAuthProvider()`  [INFERRED]
   backend/README.md → src/components/auth/BackendAuthProvider.tsx
-- `6. Integrasi frontend dan fitur yang masih mock` --references--> `BackendProfile()`  [INFERRED]
-  backend/README.md → src/components/auth/BackendProfile.tsx
-- `6. Integrasi frontend dan fitur yang masih mock` --references--> `BackendVerification()`  [INFERRED]
-  backend/README.md → src/components/operations/BackendVerification.tsx
 - `6. Integrasi frontend dan fitur yang masih mock` --references--> `BackendAdminVerifications()`  [INFERRED]
   backend/README.md → src/components/operations/BackendVerification.tsx
 - `6. Integrasi frontend dan fitur yang masih mock` --references--> `CoinProvider()`  [INFERRED]
   backend/README.md → src/store/CoinProvider.tsx
+- `6. Integrasi frontend dan fitur yang masih mock` --references--> `BackendProfile()`  [INFERRED]
+  backend/README.md → src/components/auth/BackendProfile.tsx
+- `6. Integrasi frontend dan fitur yang masih mock` --references--> `BackendVerification()`  [INFERRED]
+  backend/README.md → src/components/operations/BackendVerification.tsx
 
 ## Import Cycles
 - None detected.
@@ -86,7 +85,7 @@
 ## Hyperedges (group relationships)
 - **HiLaw 3-Role Consultation & LawToken Architecture** — prd_client_role, prd_lawyer_role, prd_admin_role, prd_lawtoken_system, docs_erd_and_mock_schema_typescript_contracts [EXTRACTED 1.00]
 
-## Communities (44 total, 11 thin omitted)
+## Communities (43 total, 11 thin omitted)
 
 ### Community 0 - "TypeScript Compiler Config"
 Cohesion: 0.11
@@ -101,8 +100,8 @@ Cohesion: 0.08
 Nodes (32): eslintConfig, dependencies, lucide-react@^1.60.0, next@16.4.2, react@19.3.0, react-dom@19.3.0, devDependencies, eslint@^9 (+24 more)
 
 ### Community 3 - "api"
-Cohesion: 0.12
-Nodes (33): 6. Integrasi frontend dan fitur yang masih mock, BackendAuthProvider(), logout(), restore(), signIn(), signUp(), backendUser(), BackendProfile() (+25 more)
+Cohesion: 0.16
+Nodes (19): remove(), save(), BackendAdminVerifications(), review(), submit(), DocumentButton(), load(), OwnData (+11 more)
 
 ### Community 4 - "check"
 Cohesion: 0.07
@@ -112,9 +111,9 @@ Nodes (68): authClient(), database, KTA_BUCKET, options, authenticate(), roles()
 Cohesion: 0.08
 Nodes (32): Page(), Content(), Page(), Page(), Page(), ConsultationBooking(), begin(), Answer (+24 more)
 
-### Community 6 - "react"
-Cohesion: 0.15
-Nodes (12): nextConfig, lucide-react, next, Content(), Page(), AuthFormFields(), dashboardPath(), useAuth() (+4 more)
+### Community 6 - "ConsultationBooking.tsx"
+Cohesion: 0.26
+Nodes (9): lucide-react, Page(), Page(), AuthForm(), AuthFormFields(), submit(), signupIssues(), dashboardPath() (+1 more)
 
 ### Community 12 - "validators/index.ts"
 Cohesion: 0.09
@@ -157,7 +156,7 @@ Cohesion: 0.17
 Nodes (11): compilerOptions, esModuleInterop, module, moduleResolution, noUncheckedIndexedAccess, outDir, rootDir, skipLibCheck (+3 more)
 
 ### Community 22 - "auth-navigation.test.cjs"
-Cohesion: 0.18
+Cohesion: 0.17
 Nodes (7): assert, fs, harness(), find(), test, ts, vm
 
 ### Community 23 - "directory.test.cjs"
@@ -185,24 +184,24 @@ Cohesion: 0.07
 Nodes (46): lawyer_profiles_updated, lawyer_status_idx, on_auth_email_updated, on_auth_user_created, one_pending_per_lawyer, profiles_role_idx, profiles_updated, public.handle_new_user() (+38 more)
 
 ### Community 30 - "react"
-Cohesion: 0.20
-Nodes (13): react, jakarta, metadata, RootLayout(), AuthContext, AuthContextValue, AuthRole, DemoUser (+5 more)
+Cohesion: 0.16
+Nodes (20): react, jakarta, metadata, RootLayout(), AuthContext, AuthContextValue, AuthRole, DemoUser (+12 more)
 
 ### Community 31 - "AdminCustomers.tsx"
-Cohesion: 0.31
-Nodes (7): AdminCustomers(), refresh(), remove(), Customer, CustomerList, AdminExperience(), Toast()
+Cohesion: 0.36
+Nodes (6): AdminCustomers(), refresh(), remove(), Customer, CustomerList, Toast()
 
 ### Community 32 - "AdminExperience.tsx"
-Cohesion: 0.19
-Nodes (22): ConsultationList(), Consultations(), CustomerExperience(), loadSnap(), localDate(), PaymentConfig, SnapCallbacks, Status() (+14 more)
+Cohesion: 0.13
+Nodes (25): Content(), Page(), ConsultationDetail(), Detail, ratingLabels, ReviewForm(), Thread, ConsultationList() (+17 more)
 
 ### Community 33 - "CoinProvider.tsx"
 Cohesion: 0.16
-Nodes (20): Detail, Thread, Overview, ApiConsultation, ApiTransaction, ConsultationStatus, COIN_PACKAGES, CoinTransaction (+12 more)
+Nodes (22): Overview, useOverview(), ApiTransaction, ConsultationStatus, COIN_PACKAGES, CoinTransaction, CustomerConsultation, PAYMENT_METHODS (+14 more)
 
-### Community 34 - "Dashboard"
-Cohesion: 0.16
-Nodes (11): Page(), Content(), Page(), sections, Content(), Page(), sections, Content() (+3 more)
+### Community 34 - "LawyerExperience.tsx"
+Cohesion: 0.11
+Nodes (22): 6. Integrasi frontend dan fitur yang masih mock, nextConfig, next, Page(), Content(), Page(), sections, Content() (+14 more)
 
 ### Community 35 - "test-consultation-flow.mjs"
 Cohesion: 0.40
@@ -211,10 +210,6 @@ Nodes (4): account(), call(), created, db
 ### Community 41 - "006_midtrans_topup.sql"
 Cohesion: 0.70
 Nodes (4): public.settle_topup_order(), public.topup_orders, topup_orders_updated, topup_orders_user_idx
-
-### Community 42 - "AuthForm"
-Cohesion: 0.60
-Nodes (3): Page(), Page(), AuthForm()
 
 ### Community 43 - "avatar.test.ts"
 Cohesion: 0.50
@@ -228,7 +223,7 @@ Nodes (3): actor, patch, removed
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `save()` connect `verification.test.cjs` to `react`?**
+- **Why does `save()` connect `verification.test.cjs` to `AdminExperience.tsx`?**
   _High betweenness centrality (0.363) - this node is a cross-community bridge._
 - **What connects `Vercel Logo SVG`, `Window Icon SVG`, `LawyerCard Component Spec (Halodoc Style)` to the rest of the system?**
   _11 weakly-connected nodes found - possible documentation gaps or missing edges._
@@ -238,7 +233,7 @@ _Questions this graph is uniquely positioned to answer:_
   _Cohesion score 0.08333333333333333 - nodes in this community are weakly interconnected._
 - **Should `Package & ESLint Configuration` be split into smaller, more focused modules?**
   _Cohesion score 0.0766488413547237 - nodes in this community are weakly interconnected._
-- **Should `api` be split into smaller, more focused modules?**
-  _Cohesion score 0.1166429587482219 - nodes in this community are weakly interconnected._
 - **Should `check` be split into smaller, more focused modules?**
   _Cohesion score 0.07142857142857142 - nodes in this community are weakly interconnected._
+- **Should `PublicWebsite.tsx` be split into smaller, more focused modules?**
+  _Cohesion score 0.08139534883720931 - nodes in this community are weakly interconnected._
