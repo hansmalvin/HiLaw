@@ -180,9 +180,9 @@
     "semantic_hash": ""
   },
   "backend/src/app.ts": {
-    "mtime": 1793647167.204576,
-    "seen": 1793647198.407565,
-    "ast_hash": "fb66ef6fb5c9338246d9a59912a9d41f",
+    "mtime": 1793647732.920998,
+    "seen": 1793647754.992567,
+    "ast_hash": "0d35aa7b3d320ea742762432748dec89",
     "semantic_hash": ""
   },
   "backend/src/config/env.ts": {
