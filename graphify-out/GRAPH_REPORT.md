@@ -1,17 +1,17 @@
-# Graph Report - HiLaw  (2026-11-02)
+# Graph Report - HiLaw  (2026-11-03)
 
 ## Corpus Check
-- 110 files · ~50,153 words
+- 108 files · ~51,013 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 7 file(s) not represented in the graph (top: .example 2, (none) 2, .pptx 1)
 
 ## Summary
-- 765 nodes · 1635 edges · 45 communities (34 shown, 11 thin omitted)
-- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 30 edges (avg confidence: 0.88)
+- 764 nodes · 1638 edges · 43 communities (32 shown, 11 thin omitted)
+- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 29 edges (avg confidence: 0.87)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `6190008e`
+- Built from commit: `728bee2a`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -22,7 +22,7 @@
 - api
 - check
 - PublicWebsite.tsx
-- react
+- ConsultationBooking.tsx
 - File SVG Asset
 - Globe SVG Asset
 - Next.js SVG Asset
@@ -46,15 +46,13 @@
 - dependencies
 - .prettierrc.json
 - 004_points_chat.sql
-- BackendAuthProvider.tsx
-- api.ts
+- react
+- AdminCustomers.tsx
 - AdminExperience.tsx
 - CoinProvider.tsx
-- Dashboard
-- ConsultationDetail.tsx
-- routes/index.ts
+- LawyerExperience.tsx
+- test-consultation-flow.mjs
 - 006_midtrans_topup.sql
-- AuthForm
 - avatar.test.ts
 
 ## God Nodes (most connected - your core abstractions)
@@ -62,24 +60,24 @@
 2. `ApiError` - 41 edges
 3. `ok()` - 35 edges
 4. `api()` - 30 edges
-5. `react` - 29 edges
+5. `react` - 28 edges
 6. `public.profiles` - 21 edges
 7. `next` - 20 edges
 8. `useAuth()` - 20 edges
-9. `useCoins()` - 18 edges
-10. `Modal()` - 17 edges
+9. `useCoins()` - 20 edges
+10. `Modal()` - 19 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `6. Integrasi frontend dan fitur yang masih mock` --references--> `BackendProfile()`  [INFERRED]
-  backend/README.md → src/components/auth/BackendProfile.tsx
-- `6. Integrasi frontend dan fitur yang masih mock` --references--> `BackendVerification()`  [INFERRED]
-  backend/README.md → src/components/operations/BackendVerification.tsx
+- `6. Integrasi frontend dan fitur yang masih mock` --references--> `BackendAuthProvider()`  [INFERRED]
+  backend/README.md → src/components/auth/BackendAuthProvider.tsx
 - `6. Integrasi frontend dan fitur yang masih mock` --references--> `BackendAdminVerifications()`  [INFERRED]
   backend/README.md → src/components/operations/BackendVerification.tsx
 - `6. Integrasi frontend dan fitur yang masih mock` --references--> `CoinProvider()`  [INFERRED]
   backend/README.md → src/store/CoinProvider.tsx
-- `6. Integrasi frontend dan fitur yang masih mock` --references--> `AppAuthProvider()`  [INFERRED]
-  backend/README.md → src/components/auth/AppAuthProvider.tsx
+- `6. Integrasi frontend dan fitur yang masih mock` --references--> `BackendProfile()`  [INFERRED]
+  backend/README.md → src/components/auth/BackendProfile.tsx
+- `6. Integrasi frontend dan fitur yang masih mock` --references--> `BackendVerification()`  [INFERRED]
+  backend/README.md → src/components/operations/BackendVerification.tsx
 
 ## Import Cycles
 - None detected.
@@ -87,7 +85,7 @@
 ## Hyperedges (group relationships)
 - **HiLaw 3-Role Consultation & LawToken Architecture** — prd_client_role, prd_lawyer_role, prd_admin_role, prd_lawtoken_system, docs_erd_and_mock_schema_typescript_contracts [EXTRACTED 1.00]
 
-## Communities (45 total, 11 thin omitted)
+## Communities (43 total, 11 thin omitted)
 
 ### Community 0 - "TypeScript Compiler Config"
 Cohesion: 0.11
@@ -103,27 +101,27 @@ Nodes (32): eslintConfig, dependencies, lucide-react@^1.60.0, next@16.4.2, react
 
 ### Community 3 - "api"
 Cohesion: 0.16
-Nodes (21): BackendProfile(), remove(), save(), AdminCustomers(), refresh(), remove(), Customer, CustomerList (+13 more)
+Nodes (19): remove(), save(), BackendAdminVerifications(), review(), submit(), DocumentButton(), load(), OwnData (+11 more)
 
 ### Community 4 - "check"
-Cohesion: 0.08
-Nodes (65): authClient(), database, KTA_BUCKET, options, authenticate(), roles(), currentUser(), refreshSession() (+57 more)
+Cohesion: 0.07
+Nodes (68): authClient(), database, KTA_BUCKET, options, authenticate(), roles(), upload, uploadProfilePhoto (+60 more)
 
 ### Community 5 - "PublicWebsite.tsx"
-Cohesion: 0.09
-Nodes (27): Page(), Content(), Page(), Page(), Page(), Answer, Chatbot(), Message (+19 more)
+Cohesion: 0.08
+Nodes (32): Page(), Content(), Page(), Page(), Page(), ConsultationBooking(), begin(), Answer (+24 more)
 
-### Community 6 - "react"
-Cohesion: 0.14
-Nodes (18): nextConfig, lucide-react, next, react, AuthFormFields(), AuthContextValue, AuthRole, dashboardPath() (+10 more)
+### Community 6 - "ConsultationBooking.tsx"
+Cohesion: 0.26
+Nodes (9): lucide-react, Page(), Page(), AuthForm(), AuthFormFields(), submit(), signupIssues(), dashboardPath() (+1 more)
 
 ### Community 12 - "validators/index.ts"
 Cohesion: 0.09
-Nodes (24): booking, chatbot, consultationStatus, customerDeletion, customerQuery, deletion, email, fullName (+16 more)
+Nodes (25): booking, chatbot, consultationStatus, customerDeletion, customerQuery, deletion, email, fullName (+17 more)
 
 ### Community 13 - "controllers/index.ts"
 Cohesion: 0.07
-Nodes (47): adminTransactions(), approve(), book(), chatbot(), consultation(), deleteCustomer(), deleteProfile(), lawyerReviews() (+39 more)
+Nodes (48): adminTransactions(), approve(), book(), chatbot(), consultation(), deleteCustomer(), deleteProfile(), lawyerReviews() (+40 more)
 
 ### Community 14 - "backend/package.json"
 Cohesion: 0.12
@@ -138,8 +136,8 @@ Cohesion: 0.13
 Nodes (11): headers, server, auth, midtransStatus, rpcCalls, server, calls, input (+3 more)
 
 ### Community 17 - "app.ts"
-Cohesion: 0.20
-Nodes (10): express@^5.0.0, zod@^4.0.0, app, env, result, schema, errorHandler(), server (+2 more)
+Cohesion: 0.19
+Nodes (10): multer@^2.0.0, zod@^4.0.0, app, env, result, schema, errorHandler(), server (+2 more)
 
 ### Community 18 - "load-ts.cjs"
 Cohesion: 0.14
@@ -150,15 +148,15 @@ Cohesion: 0.14
 Nodes (9): save(), assert, { File }, fs, harness(), text(), test, ts (+1 more)
 
 ### Community 20 - "test-admin-customers.mjs"
-Cohesion: 0.14
-Nodes (10): createdIds, server, paths, png, server, account(), call(), created (+2 more)
+Cohesion: 0.21
+Nodes (6): createdIds, server, paths, png, server, server
 
 ### Community 21 - "compilerOptions"
 Cohesion: 0.17
 Nodes (11): compilerOptions, esModuleInterop, module, moduleResolution, noUncheckedIndexedAccess, outDir, rootDir, skipLibCheck (+3 more)
 
 ### Community 22 - "auth-navigation.test.cjs"
-Cohesion: 0.18
+Cohesion: 0.17
 Nodes (7): assert, fs, harness(), find(), test, ts, vm
 
 ### Community 23 - "directory.test.cjs"
@@ -178,48 +176,40 @@ Cohesion: 0.25
 Nodes (8): scripts, build, create-admin, dev, format, start, test, typecheck
 
 ### Community 27 - "dependencies"
-Cohesion: 0.29
-Nodes (7): dependencies, cors@^2.8.5, express-rate-limit@^8.0.0, helmet@^8.0.0, cors, express-rate-limit, helmet
+Cohesion: 0.25
+Nodes (8): dependencies, cors@^2.8.5, express@^5.0.0, express-rate-limit@^8.0.0, helmet@^8.0.0, cors, express-rate-limit, helmet
 
 ### Community 29 - "004_points_chat.sql"
 Cohesion: 0.07
 Nodes (46): lawyer_profiles_updated, lawyer_status_idx, on_auth_email_updated, on_auth_user_created, one_pending_per_lawyer, profiles_role_idx, profiles_updated, public.handle_new_user() (+38 more)
 
-### Community 30 - "BackendAuthProvider.tsx"
-Cohesion: 0.15
-Nodes (18): 6. Integrasi frontend dan fitur yang masih mock, jakarta, metadata, RootLayout(), AppAuthProvider(), AuthContext, DemoUser, BackendAuthProvider() (+10 more)
+### Community 30 - "react"
+Cohesion: 0.16
+Nodes (20): react, jakarta, metadata, RootLayout(), AuthContext, AuthContextValue, AuthRole, DemoUser (+12 more)
 
-### Community 31 - "api.ts"
-Cohesion: 0.29
-Nodes (10): DocumentButton(), load(), OwnData, API_URL, ApiLawyer, ApiProfile, openDocument(), refreshAccess() (+2 more)
+### Community 31 - "AdminCustomers.tsx"
+Cohesion: 0.36
+Nodes (6): AdminCustomers(), refresh(), remove(), Customer, CustomerList, Toast()
 
 ### Community 32 - "AdminExperience.tsx"
-Cohesion: 0.20
-Nodes (18): ConsultationList(), Consultations(), CustomerExperience(), localDate(), Status(), TopUp(), TransactionTable(), Operations() (+10 more)
+Cohesion: 0.13
+Nodes (25): Content(), Page(), ConsultationDetail(), Detail, ratingLabels, ReviewForm(), Thread, ConsultationList() (+17 more)
 
 ### Community 33 - "CoinProvider.tsx"
-Cohesion: 0.14
-Nodes (24): Detail, Thread, loadSnap(), PaymentConfig, SnapCallbacks, payWithMidtrans(), Window, ApiConsultation (+16 more)
-
-### Community 34 - "Dashboard"
 Cohesion: 0.16
-Nodes (11): Page(), Content(), Page(), sections, Content(), Page(), sections, Content() (+3 more)
+Nodes (22): Overview, useOverview(), ApiTransaction, ConsultationStatus, COIN_PACKAGES, CoinTransaction, CustomerConsultation, PAYMENT_METHODS (+14 more)
 
-### Community 35 - "ConsultationDetail.tsx"
-Cohesion: 0.38
-Nodes (4): Content(), Page(), ConsultationDetail(), ReviewForm()
+### Community 34 - "LawyerExperience.tsx"
+Cohesion: 0.11
+Nodes (22): 6. Integrasi frontend dan fitur yang masih mock, nextConfig, next, Page(), Content(), Page(), sections, Content() (+14 more)
 
-### Community 36 - "routes/index.ts"
-Cohesion: 0.32
-Nodes (6): multer@^2.0.0, upload, uploadProfilePhoto, authLimit, routes, multer
+### Community 35 - "test-consultation-flow.mjs"
+Cohesion: 0.40
+Nodes (4): account(), call(), created, db
 
 ### Community 41 - "006_midtrans_topup.sql"
 Cohesion: 0.70
 Nodes (4): public.settle_topup_order(), public.topup_orders, topup_orders_updated, topup_orders_user_idx
-
-### Community 42 - "AuthForm"
-Cohesion: 0.60
-Nodes (3): Page(), Page(), AuthForm()
 
 ### Community 43 - "avatar.test.ts"
 Cohesion: 0.50
@@ -233,8 +223,8 @@ Nodes (3): actor, patch, removed
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `save()` connect `verification.test.cjs` to `ConsultationDetail.tsx`?**
-  _High betweenness centrality (0.364) - this node is a cross-community bridge._
+- **Why does `save()` connect `verification.test.cjs` to `AdminExperience.tsx`?**
+  _High betweenness centrality (0.363) - this node is a cross-community bridge._
 - **What connects `Vercel Logo SVG`, `Window Icon SVG`, `LawyerCard Component Spec (Halodoc Style)` to the rest of the system?**
   _11 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `TypeScript Compiler Config` be split into smaller, more focused modules?**
@@ -244,6 +234,6 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `Package & ESLint Configuration` be split into smaller, more focused modules?**
   _Cohesion score 0.0766488413547237 - nodes in this community are weakly interconnected._
 - **Should `check` be split into smaller, more focused modules?**
-  _Cohesion score 0.07659850697825381 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.07142857142857142 - nodes in this community are weakly interconnected._
 - **Should `PublicWebsite.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.09103840682788052 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.08139534883720931 - nodes in this community are weakly interconnected._

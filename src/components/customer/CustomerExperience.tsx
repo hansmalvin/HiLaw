@@ -186,7 +186,9 @@ export function CustomerExperience({ section }: { section: string }) {
 
   return !ready ? (
     error ? null : (
-      <div role="status">Memuat saldo dan aktivitas Anda…</div>
+      <div className="loading" role="status">
+        Memuat saldo dan aktivitas Anda…
+      </div>
     )
   ) : section === "top-up" ? (
     <TopUp />

@@ -4,6 +4,7 @@ import { useState, useEffect, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { Modal } from "@/components/ui/Modal";
 import { useAuth, dashboardPath, type AuthRole } from "./AuthProvider";
 
 export default function AuthForm({ register = false }: { register?: boolean }) {
@@ -14,6 +15,28 @@ export default function AuthForm({ register = false }: { register?: boolean }) {
       register={register}
     />
   );
+}
+
+// Mirrors the backend signup schema, so every problem is listed at once instead of one browser bubble at a time.
+function signupIssues(f: {
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  confirm: string;
+}) {
+  const issues: Partial<Record<keyof typeof f, string>> = {};
+  if (f.name.trim().length < 2)
+    issues.name = "Nama lengkap minimal 2 karakter.";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim()))
+    issues.email = "Email belum valid. Contoh: nama@email.com.";
+  if (!/^\+?[\d\s-]{9,16}$/.test(f.phone.trim()))
+    issues.phone =
+      "Nomor telepon harus 9–16 karakter berupa angka, spasi, atau tanda hubung.";
+  if (f.password.length < 8) issues.password = "Password minimal 8 karakter.";
+  if (!f.confirm || f.confirm !== f.password)
+    issues.confirm = "Konfirmasi password belum sama dengan password.";
+  return issues;
 }
 
 function AuthFormFields({ register }: { register: boolean }) {
@@ -29,7 +52,14 @@ function AuthFormFields({ register }: { register: boolean }) {
     [show, setShow] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [forgot, setForgot] = useState(false);
+    [forgot, setForgot] = useState(false),
+    [checked, setChecked] = useState(false);
+  // After the first submit the list updates live, so each fixed field drops off it.
+  const issues =
+    register && checked
+      ? signupIssues({ name, email, phone, password, confirm })
+      : {};
+  const problems = Object.values(issues);
   useEffect(() => {
     if (!ready || !user) return;
     const next = new URLSearchParams(window.location.search).get("next");
@@ -44,10 +74,10 @@ function AuthFormFields({ register }: { register: boolean }) {
     e.preventDefault();
     if (busy) return;
     setError("");
-    if (register && password !== confirm) {
-      setError("Konfirmasi password belum sesuai.");
-
-      return;
+    if (register) {
+      setChecked(true);
+      if (Object.keys(signupIssues({ name, email, phone, password, confirm })).length)
+        return;
     }
     setBusy(true);
     try {
@@ -114,7 +144,12 @@ function AuthFormFields({ register }: { register: boolean }) {
             ? "Mulai perjalanan Anda bersama HiLaw."
             : "Masuk untuk melanjutkan ke dashboard Anda."}
         </p>
-        <form onSubmit={submit} className="auth-form" autoComplete="off">
+        <form
+          onSubmit={submit}
+          className="auth-form"
+          autoComplete="off"
+          noValidate={register}
+        >
           {register && (
             <label>
               Nama lengkap
@@ -123,6 +158,7 @@ function AuthFormFields({ register }: { register: boolean }) {
                 maxLength={80}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                aria-invalid={!!issues.name}
                 autoComplete="off"
                 placeholder="Nama lengkap Anda"
               />
@@ -136,6 +172,7 @@ function AuthFormFields({ register }: { register: boolean }) {
               maxLength={120}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              aria-invalid={!!issues.email}
               autoComplete="off"
               placeholder="nama@email.com"
             />
@@ -150,6 +187,7 @@ function AuthFormFields({ register }: { register: boolean }) {
                 title="Gunakan 9–16 karakter berupa angka, spasi, atau tanda hubung."
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
+                aria-invalid={!!issues.phone}
                 autoComplete="off"
                 placeholder="081234567890"
               />
@@ -165,6 +203,7 @@ function AuthFormFields({ register }: { register: boolean }) {
                 maxLength={128}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                aria-invalid={!!issues.password}
                 autoComplete="new-password"
                 placeholder={register ? "Minimal 8 karakter" : "Password Anda"}
               />
@@ -189,6 +228,7 @@ function AuthFormFields({ register }: { register: boolean }) {
                   type={show ? "text" : "password"}
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
+                  aria-invalid={!!issues.confirm}
                   autoComplete="new-password"
                 />
               </label>
@@ -219,6 +259,16 @@ function AuthFormFields({ register }: { register: boolean }) {
               </button>
             </div>
           )}
+          {problems.length > 0 && (
+            <div className="form-error form-issues" role="alert">
+              <strong>Periksa kembali data berikut:</strong>
+              <ul>
+                {problems.map((p) => (
+                  <li key={p}>{p}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           {error && (
             <p className="form-error" role="alert">
               {error}
@@ -237,32 +287,14 @@ function AuthFormFields({ register }: { register: boolean }) {
         </p>
       </section>
       {forgot && (
-        <div className="modal-backdrop" onClick={() => setForgot(false)}>
-          <section
-            className="auth-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="forgot-title"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") setForgot(false);
-              if (e.key === "Tab") {
-                e.preventDefault();
-                e.currentTarget.querySelector("button")?.focus();
-              }
-            }}
-          >
-            <h2 id="forgot-title">Pemulihan akun</h2>
-            <p>Hubungi admin HiLaw untuk bantuan pemulihan akses akun Anda.</p>
-            <button
-              autoFocus
-              className="button"
-              onClick={() => setForgot(false)}
-            >
+        <Modal title="Pemulihan akun" onClose={() => setForgot(false)}>
+          <p>Hubungi admin HiLaw untuk bantuan pemulihan akses akun Anda.</p>
+          <div className="button-row modal-buttons">
+            <button className="button" onClick={() => setForgot(false)}>
               Mengerti
             </button>
-          </section>
-        </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

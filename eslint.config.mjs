@@ -14,8 +14,15 @@ const eslintConfig = defineConfig(
         "out/**",
         "build/**",
         "next-env.d.ts",
+        // backend/ is a separate package with its own tsc, tests and prettier (tsconfig excludes it too).
+        "backend/**",
       ]
     ),
+    {
+      // The CommonJS test harnesses load sources with require() by design.
+      files: ["**/*.cjs"],
+      rules: { "@typescript-eslint/no-require-imports": "off" },
+    },
   ]
 );
 

@@ -42,9 +42,10 @@ export function Chatbot() {
   const [messages, setMessages] = useState<Message[]>([welcome]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
-  const bottom = useRef<HTMLDivElement>(null);
+  const log = useRef<HTMLDivElement>(null);
+  // Scroll only the chat box; scrollIntoView would also drag the whole page.
   useEffect(() => {
-    bottom.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    log.current?.scrollTo({ top: log.current.scrollHeight, behavior: "smooth" });
   }, [messages, typing]);
 
   async function send(text: string) {
@@ -140,6 +141,7 @@ export function Chatbot() {
             <span className="assistant-status">Siap membantu</span>
           </header>
           <div
+            ref={log}
             className="chat-messages"
             role="log"
             aria-label="Percakapan HiLaw Assistant"
@@ -197,11 +199,15 @@ export function Chatbot() {
               <div className="message assistant">
                 <Bot size={19} />
                 <p className="typing" role="status">
-                  HiLaw Assistant sedang mengetik<span>…</span>
+                  <span className="typing-dots" aria-hidden="true">
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                  HiLaw Assistant sedang mengetik
                 </p>
               </div>
             )}
-            <div ref={bottom} />
           </div>
           <div className="chat-bottom">
             {messages.length === 1 && (

@@ -452,7 +452,9 @@ export function BackendAdminVerifications() {
         </p>
       )}
       {loading ? (
-        <p role="status">Memuat pengajuan...</p>
+        <p className="loading" role="status">
+          Memuat pengajuan...
+        </p>
       ) : (
         <div className="table-scroll">
           <table className="coin-table">

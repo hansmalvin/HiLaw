@@ -112,9 +112,31 @@ function harness({
     },
   };
 }
+function fillSignup(h, tree, { confirm = "Password123!", ...overrides } = {}) {
+  const values = {
+    "Nama lengkap Anda": "Nama Pengguna",
+    "nama@email.com": "nama@example.com",
+    "081234567890": "081234567890",
+    "Minimal 8 karakter": "Password123!",
+    ...overrides,
+  };
+  for (const [placeholder, value] of Object.entries(values))
+    h.find(
+      tree,
+      (node) => node.type === "input" && node.props.placeholder === placeholder,
+    ).props.onChange({ target: { value } });
+  h.find(
+    tree,
+    (node) =>
+      node.type === "input" &&
+      node.props.type === "password" &&
+      !node.props.placeholder,
+  ).props.onChange({ target: { value: confirm } });
+}
 for (const register of [false, true]) {
   test(`${register ? "Sign Up" : "Sign In"} navigates after the committed session render, without manual refresh`, async () => {
     const h = harness({ register, role: "LAWYER" });
+    if (register) fillSignup(h, h.render());
     const form = h.find(h.render(), (node) => node.type === "form");
     await form.props.onSubmit({ preventDefault() {} });
     assert.equal(h.navigations.length, 0);
@@ -134,6 +156,42 @@ test("failed login restores the submit button and shows an actionable error", as
   assert.equal(button.props.disabled, false);
   assert.ok(h.find(tree, (node) => node.props?.role === "alert"));
   assert.equal(h.navigations.length, 0);
+});
+test("Sign Up lists every invalid field at once and does not call the API", async () => {
+  const h = harness({ register: true });
+  fillSignup(h, h.render(), {
+    "Nama lengkap Anda": "A",
+    "nama@email.com": "bukan-email",
+    "081234567890": "12ab",
+    "Minimal 8 karakter": "pendek",
+    confirm: "lain",
+  });
+  const form = h.find(h.render(), (node) => node.type === "form");
+  assert.equal(form.props.noValidate, true);
+  await form.props.onSubmit({ preventDefault() {} });
+  const tree = h.render();
+  const items = [
+    h.find(tree, (node) => node.type === "ul").props.children,
+  ].flat();
+  assert.equal(items.length, 5);
+  assert.equal(
+    h.find(tree, (node) => node.type === "input" && node.props.type === "email")
+      .props["aria-invalid"],
+    true,
+  );
+  assert.equal(h.navigations.length, 0);
+  // Fixing one field removes it from the list without resubmitting.
+  fillSignup(h, tree, {
+    "nama@email.com": "bukan-email",
+    "081234567890": "12ab",
+    "Minimal 8 karakter": "pendek",
+    confirm: "lain",
+  });
+  assert.equal(
+    [h.find(h.render(), (node) => node.type === "ul").props.children].flat()
+      .length,
+    4,
+  );
 });
 test("an existing session redirects away from auth pages", () => {
   const h = harness();

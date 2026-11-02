@@ -78,6 +78,13 @@ export function Portrait({ lawyer }: { lawyer: PublicLawyer }) {
   );
 }
 
+// Placeholder cards keep the grid's shape while the lawyer list loads.
+function CardSkeletons({ count }: { count: number }) {
+  return Array.from({ length: count }, (_, i) => (
+    <div key={i} className="lawyer-card skeleton" aria-hidden="true" />
+  ));
+}
+
 export function LawyerCard({ lawyer: l }: { lawyer: ManagedLawyer }) {
   return (
     <article className="lawyer-card">
@@ -124,6 +131,7 @@ export function LawyerCard({ lawyer: l }: { lawyer: ManagedLawyer }) {
 
 export function Landing() {
   const lawyers = usePublicLawyers();
+  const { ready, error } = useCoins();
 
   return (
     <>
@@ -290,12 +298,14 @@ export function Landing() {
               Lihat semua pengacara <ArrowRight size={17} />
             </Link>
           </div>
-          <div className="lawyer-grid">
-            {lawyers.slice(0, 3).map((l) => (
-              <LawyerCard key={l.id} lawyer={l} />
-            ))}
+          <div className="lawyer-grid" aria-busy={!ready}>
+            {ready
+              ? lawyers
+                  .slice(0, 3)
+                  .map((l) => <LawyerCard key={l.id} lawyer={l} />)
+              : !error && <CardSkeletons count={3} />}
           </div>
-          {!lawyers.length && (
+          {ready && !lawyers.length && (
             <p className="demo-note">
               Belum ada pengacara terverifikasi. Pengacara tampil di sini
               setelah lolos verifikasi Admin.
@@ -387,7 +397,7 @@ export function Landing() {
             ],
             [
               "Bagaimana cara membeli Poin HiLaw?",
-              "Masuk sebagai Customer, buka Poin HiLaw, pilih paket dan metode pembayaran simulasi, lalu konfirmasi. 1 Poin = Rp1.000. Tidak ada pembayaran asli pada tahap ini.",
+              "Masuk sebagai Customer, buka Poin HiLaw, pilih paket, lalu bayar lewat Midtrans Sandbox (atau pembayaran simulasi bila Midtrans belum diaktifkan). 1 Poin = Rp1.000. Tidak ada uang asli yang ditagihkan pada tahap ini.",
             ],
             [
               "Bagaimana cara melakukan konsultasi?",
@@ -458,6 +468,7 @@ export function Footer() {
 
 export function Directory() {
   const lawyers = usePublicLawyers();
+  const { ready, error } = useCoins();
   const params = useSearchParams();
   const initial = params.get("category") || "";
   const [query, setQuery] = useState("");
@@ -671,7 +682,15 @@ export function Directory() {
           </div>
           <div className="results-bar">
             <span aria-live="polite">
-              <strong>{results.length}</strong> pengacara ditemukan
+              {ready ? (
+                <>
+                  <strong>{results.length}</strong> pengacara ditemukan
+                </>
+              ) : error ? (
+                "Daftar pengacara belum dapat dimuat."
+              ) : (
+                "Memuat pengacara…"
+              )}
             </span>
             <label>
               Urutkan:{" "}
@@ -687,7 +706,13 @@ export function Directory() {
               </select>
             </label>
           </div>
-          {results.length ? (
+          {!ready ? (
+            !error && (
+              <div className="directory-cards" aria-busy="true">
+                <CardSkeletons count={4} />
+              </div>
+            )
+          ) : results.length ? (
             <div className="directory-cards">
               {results.map((l) => (
                 <LawyerCard key={l.id} lawyer={l} />
@@ -773,7 +798,9 @@ export function LawyerDetail({ lawyer: l }: { lawyer: ManagedLawyer }) {
               </p>
             )}
             {reviews === null ? (
-              <p role="status">Memuat ulasan…</p>
+              <p className="loading" role="status">
+                Memuat ulasan…
+              </p>
             ) : reviews.length ? (
               reviews.map((r) => (
                 <div className="review" key={r.id}>

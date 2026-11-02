@@ -40,7 +40,7 @@ export function ConsultationDetail({ id }: { id: string }) {
     [reviewLater, setReviewLater] = useState(false);
   const locked = useRef(false),
     request = useRef(""),
-    bottom = useRef<HTMLDivElement>(null);
+    log = useRef<HTMLDivElement>(null);
   const status = thread?.status ?? detail?.status;
 
   useEffect(() => {
@@ -89,9 +89,11 @@ export function ConsultationDetail({ id }: { id: string }) {
     return () => clearInterval(timer);
   }, [status]);
 
+  // Scroll only the chat box, so a polled message never pulls the page away from the info panel.
   useEffect(() => {
-    bottom.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [thread?.items.length]);
+    log.current?.scrollTo({ top: log.current.scrollHeight, behavior: "smooth" });
+    // `detail` too: the chat box mounts only after it loads, possibly after the messages.
+  }, [thread?.items.length, detail]);
 
   if (!authReady || !user || (!detail && !loadError))
     return (
@@ -218,6 +220,7 @@ export function ConsultationDetail({ id }: { id: string }) {
             <Status status={current} />
           </header>
           <div
+            ref={log}
             className="chat-messages room-messages"
             role="log"
             aria-label="Riwayat chat konsultasi"
@@ -259,7 +262,6 @@ export function ConsultationDetail({ id }: { id: string }) {
                 </p>
               </div>
             )}
-            <div ref={bottom} />
           </div>
           <div className="chat-bottom">
             {failure && !confirm && (

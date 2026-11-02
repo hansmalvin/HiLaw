@@ -171,7 +171,8 @@ export async function api<T>(
       "Backend tidak dapat dihubungi. Periksa server dan koneksi Anda.",
     );
   }
-  const result = await response.json();
+  // A proxy or wrong API URL can answer with HTML; report it as a failed request, not a JSON parse error.
+  const result = await response.json().catch(() => ({}));
   if (!response.ok || !result.success)
     throw new ApiError(response.status, result.message || "Request gagal.");
   return result.data as T;
@@ -192,7 +193,7 @@ export async function openDocument(id: string, admin = false) {
     },
   );
   if (!response.ok) {
-    const error = await response.json();
+    const error = await response.json().catch(() => ({}));
     throw new Error(error.message || "Dokumen tidak dapat dibuka.");
   }
   const url = URL.createObjectURL(await response.blob());

@@ -48,7 +48,7 @@ export async function publicLawyers() {
   const { data, error } = await database
     .from("lawyer_profiles")
     .select(
-      "id,user_id,specialization,experience_years,bio,verification_status,rate_points,is_online,profiles!inner(full_name,avatar_url)",
+      "id,user_id,specialization,experience_years,organization,bio,verification_status,rate_points,is_online,profiles!inner(full_name,avatar_url)",
     )
     .eq("verification_status", "approved")
     .order("created_at", { ascending: false });
